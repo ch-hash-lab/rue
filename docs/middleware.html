@@ -28,44 +28,7 @@
     </nav>
 
     <div class="docs-layout">
-        <aside class="docs-sidebar">
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Getting Started</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/getting-started.html">Introduction</a></li>
-                    <li><a href="/rue/docs/installation.html">Installation</a></li>
-                    <li><a href="/rue/docs/quickstart.html">Quick Start</a></li>
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Core Concepts</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/routing.html">Routing</a></li>
-                    <li><a href="/rue/docs/context.html">Context</a></li>
-                    <li><a href="/rue/docs/middleware.html" class="active">Middleware</a></li>
-                    <li><a href="/rue/docs/binding.html">Data Binding</a></li>
-                    <li><a href="/rue/docs/validation.html">Validation</a></li>
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Features</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/websocket.html">WebSocket</a></li>
-                    <li><a href="/rue/docs/sse.html">SSE</a></li>
-                    <li><a href="/rue/docs/graphql.html">GraphQL</a></li>
-                    <li><a href="/rue/docs/grpc.html">gRPC</a></li>
-                    <li><a href="/rue/docs/quic.html">QUIC/HTTP3</a></li>
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Advanced</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/compression.html">Compression</a></li>
-                    <li><a href="/rue/docs/testing.html">Testing</a></li>
-                    <li><a href="/rue/docs/api-reference.html">API Reference</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside class="docs-sidebar" id="sidebar"></aside>
 
         <main class="docs-content">
             <h1>Middleware</h1>
@@ -357,6 +320,7 @@ r.Use(C())  // Executes third (before)
 
     <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
 
+    <script src="/rue/js/sidebar.js"></script>
     <script src="/rue/js/prism.js"></script>
     <script src="/rue/js/main.js"></script>
 </body>

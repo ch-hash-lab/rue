@@ -24,18 +24,7 @@
         </div>
     </nav>
     <div class="docs-layout">
-        <aside class="docs-sidebar">
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Features</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/websocket.html">WebSocket</a></li>
-                    <li><a href="/rue/docs/sse.html">SSE</a></li>
-                    <li><a href="/rue/docs/graphql.html">GraphQL</a></li>
-                    <li><a href="/rue/docs/grpc.html">gRPC</a></li>
-                    <li><a href="/rue/docs/quic.html" class="active">QUIC/HTTP3</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside class="docs-sidebar" id="sidebar"></aside>
         <main class="docs-content">
             <h1>QUIC/HTTP3</h1>
             <p>Rue supports HTTP/3 via the QUIC protocol for improved performance.</p>
@@ -83,6 +72,7 @@ r.RunQUIC(":443", "cert.pem", "key.pem")</code></pre>
             </nav>
         </main>
     </div>
+    <script src="/rue/js/sidebar.js"></script>
     <script src="/rue/js/prism.js"></script>
     <script src="/rue/js/main.js"></script>
 </body>

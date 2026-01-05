@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compression - Rue Documentation</title>
+    <title>Installation - Rue Documentation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -26,38 +26,32 @@
     <div class="docs-layout">
         <aside class="docs-sidebar" id="sidebar"></aside>
         <main class="docs-content">
-            <h1>Compression</h1>
-            <p>Rue supports Gzip and Brotli compression with automatic content negotiation.</p>
-            <h2>Usage</h2>
+            <h1>Installation</h1>
+            <p>Rue requires Go 1.21 or later.</p>
+            <h2>Using go get</h2>
             <div class="code-block">
-                <pre><code class="language-go">// Auto-select best compression (prefers Brotli)
-r.Use(rue.Compress())
-
-// Gzip only
-r.Use(rue.Gzip())
-
-// Brotli only
-r.Use(rue.Brotli())</code></pre>
+                <pre><code class="language-go">go get github.com/ch-hash-lab/rue</code></pre>
             </div>
-            <h2>How It Works</h2>
-            <p>The compression middleware:</p>
-            <ol>
-                <li>Checks the <code>Accept-Encoding</code> header</li>
-                <li>Selects the best supported algorithm</li>
-                <li>Compresses the response body</li>
-                <li>Sets the <code>Content-Encoding</code> header</li>
-            </ol>
-            <h2>Benchmarks</h2>
-            <table>
-                <thead><tr><th>Algorithm</th><th>Time</th><th>Compression Ratio</th></tr></thead>
-                <tbody>
-                    <tr><td>Gzip</td><td>~43µs</td><td>Good</td></tr>
-                    <tr><td>Brotli</td><td>~18µs</td><td>Better</td></tr>
-                </tbody>
-            </table>
+            <h2>Using go mod</h2>
+            <p>Add to your <code>go.mod</code>:</p>
+            <div class="code-block">
+                <pre><code class="language-go">require github.com/ch-hash-lab/rue latest</code></pre>
+            </div>
+            <p>Then run:</p>
+            <div class="code-block">
+                <pre><code class="language-go">go mod tidy</code></pre>
+            </div>
+            <h2>Dependencies</h2>
+            <p>Rue has minimal dependencies:</p>
+            <ul>
+                <li><strong>sonic</strong> - High-performance JSON encoding/decoding</li>
+                <li><strong>brotli</strong> - Brotli compression</li>
+                <li><strong>quic-go</strong> - QUIC/HTTP3 support (optional)</li>
+                <li><strong>grpc</strong> - gRPC support (optional)</li>
+            </ul>
             <nav class="docs-nav">
-                <a href="/rue/docs/quic.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← QUIC/HTTP3</span></a>
-                <a href="/rue/docs/testing.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Testing →</span></a>
+                <a href="/rue/docs/getting-started.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Introduction</span></a>
+                <a href="/rue/docs/quickstart.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Quick Start →</span></a>
             </nav>
         </main>
     </div>

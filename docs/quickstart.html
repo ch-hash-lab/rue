@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Start - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/rue/css/style.css">
+    <link rel="stylesheet" href="/rue/css/docs.css">
+    <link rel="stylesheet" href="/rue/css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/rue/index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="/rue/index.html">Home</a></li>
+                <li><a href="/rue/docs/getting-started.html" class="active">Docs</a></li>
+                <li><a href="/rue/docs/api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar" id="sidebar"></aside>
+        <main class="docs-content">
+            <h1>Quick Start</h1>
+            <p>Build your first Rue application in 5 minutes.</p>
+            <h2>Create a new project</h2>
+            <div class="code-block">
+                <pre><code class="language-go">mkdir myapp && cd myapp
+go mod init myapp
+go get github.com/ch-hash-lab/rue</code></pre>
+            </div>
+            <h2>Write your first app</h2>
+            <p>Create <code>main.go</code>:</p>
+            <div class="code-block">
+                <pre><code class="language-go">package main
+
+import (
+    "net/http"
+    "github.com/ch-hash-lab/rue"
+)
+
+func main() {
+    r := rue.Default()
+
+    r.GET("/", func(c *rue.Context) {
+        c.JSON(http.StatusOK, rue.H{
+            "message": "Hello, Rue!",
+        })
+    })
+
+    r.GET("/hello/:name", func(c *rue.Context) {
+        name := c.Param("name")
+        c.JSON(http.StatusOK, rue.H{
+            "message": "Hello, " + name + "!",
+        })
+    })
+
+    r.Run(":8080")
+}</code></pre>
+            </div>
+            <h2>Run the app</h2>
+            <div class="code-block">
+                <pre><code class="language-go">go run main.go</code></pre>
+            </div>
+            <h2>Test it</h2>
+            <div class="code-block">
+                <pre><code class="language-go">curl http://localhost:8080/
+# {"message":"Hello, Rue!"}
+
+curl http://localhost:8080/hello/World
+# {"message":"Hello, World!"}</code></pre>
+            </div>
+            <nav class="docs-nav">
+                <a href="/rue/docs/installation.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Installation</span></a>
+                <a href="/rue/docs/routing.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Routing →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="/rue/js/sidebar.js"></script>
+    <script src="/rue/js/prism.js"></script>
+    <script src="/rue/js/main.js"></script>
+</body>
+</html>

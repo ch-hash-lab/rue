@@ -24,16 +24,7 @@
         </div>
     </nav>
     <div class="docs-layout">
-        <aside class="docs-sidebar">
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Advanced</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/compression.html">Compression</a></li>
-                    <li><a href="/rue/docs/testing.html" class="active">Testing</a></li>
-                    <li><a href="/rue/docs/api-reference.html">API Reference</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside class="docs-sidebar" id="sidebar"></aside>
         <main class="docs-content">
             <h1>Testing</h1>
             <p>Rue includes a built-in Agent for integration testing without starting a server.</p>
@@ -96,6 +87,7 @@ resp := agent.Get("/protected")</code></pre>
             </nav>
         </main>
     </div>
+    <script src="/rue/js/sidebar.js"></script>
     <script src="/rue/js/prism.js"></script>
     <script src="/rue/js/main.js"></script>
 </body>

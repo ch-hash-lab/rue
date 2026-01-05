@@ -24,18 +24,7 @@
         </div>
     </nav>
     <div class="docs-layout">
-        <aside class="docs-sidebar">
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Core Concepts</h3>
-                <ul class="sidebar-nav">
-                    <li><a href="/rue/docs/routing.html">Routing</a></li>
-                    <li><a href="/rue/docs/context.html">Context</a></li>
-                    <li><a href="/rue/docs/middleware.html">Middleware</a></li>
-                    <li><a href="/rue/docs/binding.html" class="active">Data Binding</a></li>
-                    <li><a href="/rue/docs/validation.html">Validation</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside class="docs-sidebar" id="sidebar"></aside>
         <main class="docs-content">
             <h1>Data Binding</h1>
             <p>Rue provides powerful data binding to parse request data into Go structs.</p>
@@ -84,6 +73,7 @@ r.POST("/users", func(c *rue.Context) {
             </nav>
         </main>
     </div>
+    <script src="/rue/js/sidebar.js"></script>
     <script src="/rue/js/prism.js"></script>
     <script src="/rue/js/main.js"></script>
 </body>
