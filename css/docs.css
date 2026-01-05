@@ -2,8 +2,6 @@
 
 /* Docs Layout */
 .docs-layout {
-    display: grid;
-    grid-template-columns: 280px 1fr;
     min-height: 100vh;
     padding-top: 64px;
 }
@@ -62,8 +60,9 @@
 /* Main Content */
 .docs-content {
     margin-left: 280px;
-    padding: 48px;
-    max-width: 900px;
+    padding: 48px 48px 48px 48px;
+    max-width: calc(100% - 280px);
+    min-height: calc(100vh - 64px);
 }
 
 .docs-content h1 {
