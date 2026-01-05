@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rue - High-Performance Go Web Framework</title>
+    <meta name="description" content="A blazing fast, feature-rich web framework for Go with minimal dependencies. Radix tree routing, WebSocket, GraphQL, gRPC, QUIC/HTTP3 support.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="docs/getting-started.html">Docs</a></li>
+                <li><a href="docs/api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span class="gradient-text">Rue</span>
+            </h1>
+            <p class="hero-subtitle">High-Performance Go Web Framework</p>
+            <p class="hero-description">
+                Blazing fast routing, minimal dependencies, and everything you need to build modern web applications.
+            </p>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-value">~8ns</span>
+                    <span class="stat-label">Static Route</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">~27ns</span>
+                    <span class="stat-label">Param Route</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Allocations</span>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="docs/getting-started.html" class="btn btn-primary">Get Started</a>
+                <a href="https://github.com/ch-hash-lab/rue" class="btn btn-secondary" target="_blank">
+                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <div class="hero-install">
+                <code>go get github.com/ch-hash-lab/rue</code>
+                <button class="copy-btn" onclick="copyInstall()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Blazing Fast Router</h3>
+                    <p>Radix tree-based routing with ~8ns static route matching and zero allocations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>Rich Middleware</h3>
+                    <p>Logger, Recovery, CORS, Rate Limiter, JWT, API Key authentication built-in.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Data Binding</h3>
+                    <p>JSON, XML, Form, Query binding with powerful struct validation.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>WebSocket</h3>
+                    <p>Full RFC 6455 implementation with Hub for broadcasting.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <h3>SSE & GraphQL</h3>
+                    <p>Server-Sent Events and GraphQL with built-in Playground UI.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>QUIC/HTTP3</h3>
+                    <p>Next-generation protocol support via quic-go.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>gRPC Integration</h3>
+                    <p>Seamless gRPC support with middleware adapter.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🗜️</div>
+                    <h3>Compression</h3>
+                    <p>Gzip and Brotli with automatic content negotiation.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="code-example">
+        <div class="container">
+            <h2 class="section-title">Quick Start</h2>
+            <div class="code-tabs">
+                <button class="tab-btn active" data-tab="basic">Basic</button>
+                <button class="tab-btn" data-tab="middleware">Middleware</button>
+                <button class="tab-btn" data-tab="websocket">WebSocket</button>
+                <button class="tab-btn" data-tab="graphql">GraphQL</button>
+            </div>
+            <div class="code-panels">
+                <div class="code-panel active" id="basic">
+                    <pre><code class="language-go">package main
+
+import (
+    "net/http"
+    "github.com/ch-hash-lab/rue"
+)
+
+func main() {
+    r := rue.Default()
+
+    r.GET("/", func(c *rue.Context) {
+        c.JSON(http.StatusOK, rue.H{"message": "Hello, Rue!"})
+    })
+
+    r.GET("/users/:id", func(c *rue.Context) {
+        c.JSON(http.StatusOK, rue.H{"user_id": c.Param("id")})
+    })
+
+    r.Run(":8080")
+}</code></pre>
+                </div>
+                <div class="code-panel" id="middleware">
+                    <pre><code class="language-go">package main
+
+import (
+    "github.com/ch-hash-lab/rue"
+)
+
+func main() {
+    r := rue.New()
+
+    // Built-in middleware
+    r.Use(rue.Logger())
+    r.Use(rue.Recovery())
+    r.Use(rue.CORS())
+    r.Use(rue.RateLimiter(100, 200))
+    r.Use(rue.Compress())
+
+    // JWT protected routes
+    api := r.Group("/api")
+    api.Use(rue.JWT([]byte("secret")))
+    {
+        api.GET("/profile", getProfile)
+    }
+
+    r.Run(":8080")
+}</code></pre>
+                </div>
+                <div class="code-panel" id="websocket">
+                    <pre><code class="language-go">package main
+
+import "github.com/ch-hash-lab/rue"
+
+func main() {
+    r := rue.Default()
+    hub := rue.NewWebSocketHub()
+    go hub.Run()
+
+    r.GET("/ws", func(c *rue.Context) {
+        handler := &rue.WebSocketHandler{
+            Hub: hub,
+            OnMessage: func(conn *rue.WebSocketConn, t int, data []byte) {
+                hub.Broadcast(t, data)
+            },
+        }
+        handler.Handle(c)
+    })
+
+    r.Run(":8080")
+}</code></pre>
+                </div>
+                <div class="code-panel" id="graphql">
+                    <pre><code class="language-go">package main
+
+import "github.com/ch-hash-lab/rue"
+
+func main() {
+    r := rue.Default()
+
+    schema := &rue.GraphQLSchema{
+        Query: &rue.ObjectType{
+            Name: "Query",
+            Fields: map[string]*rue.Field{
+                "hello": {
+                    Type: rue.StringType,
+                    Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                        return "Hello, GraphQL!", nil
+                    },
+                },
+            },
+        },
+    }
+
+    handler := rue.NewGraphQLHandler(schema)
+    r.POST("/graphql", handler.Handle)
+    r.GET("/graphql", handler.Playground)
+
+    r.Run(":8080")
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="benchmarks">
+        <div class="container">
+            <h2 class="section-title">Benchmarks</h2>
+            <div class="benchmark-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Benchmark</th>
+                            <th>Iterations</th>
+                            <th>Time/op</th>
+                            <th>Bytes/op</th>
+                            <th>Allocs/op</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Router_StaticRoute</td>
+                            <td>145,144,989</td>
+                            <td class="highlight">8.35 ns</td>
+                            <td>0 B</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td>Router_ParamRoute</td>
+                            <td>44,290,861</td>
+                            <td class="highlight">26.83 ns</td>
+                            <td>32 B</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Engine_SimpleRoute</td>
+                            <td>3,112,678</td>
+                            <td>387.5 ns</td>
+                            <td>1064 B</td>
+                            <td>11</td>
+                        </tr>
+                        <tr>
+                            <td>Engine_JSONResponse</td>
+                            <td>1,598,793</td>
+                            <td>778.3 ns</td>
+                            <td>1633 B</td>
+                            <td>18</td>
+                        </tr>
+                        <tr>
+                            <td>Brotli Compression</td>
+                            <td>66,400</td>
+                            <td>18.1 µs</td>
+                            <td>15920 B</td>
+                            <td>14</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to build something fast?</h2>
+            <p>Get started with Rue in minutes.</p>
+            <a href="docs/getting-started.html" class="btn btn-primary btn-large">Read the Docs</a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-text">Rue</span>
+                    <p>High-Performance Go Web Framework</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-col">
+                        <h4>Documentation</h4>
+                        <ul>
+                            <li><a href="docs/getting-started.html">Getting Started</a></li>
+                            <li><a href="docs/routing.html">Routing</a></li>
+                            <li><a href="docs/middleware.html">Middleware</a></li>
+                            <li><a href="docs/api-reference.html">API Reference</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Features</h4>
+                        <ul>
+                            <li><a href="docs/websocket.html">WebSocket</a></li>
+                            <li><a href="docs/graphql.html">GraphQL</a></li>
+                            <li><a href="docs/grpc.html">gRPC</a></li>
+                            <li><a href="docs/quic.html">QUIC/HTTP3</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Community</h4>
+                        <ul>
+                            <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+                            <li><a href="https://github.com/ch-hash-lab/rue/issues" target="_blank">Issues</a></li>
+                            <li><a href="https://github.com/ch-hash-lab/rue/discussions" target="_blank">Discussions</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Rue. MIT License.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/prism.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

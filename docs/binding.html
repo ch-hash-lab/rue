@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Binding - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html" class="active">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>Data Binding</h1>
+            <p>Rue provides powerful data binding to parse request data into Go structs.</p>
+            <h2>Binding Methods</h2>
+            <div class="code-block">
+                <pre><code class="language-go">type CreateUser struct {
+    Name  string `json:"name" form:"name"`
+    Email string `json:"email" form:"email"`
+    Age   int    `json:"age" form:"age"`
+}
+
+r.POST("/users", func(c *rue.Context) {
+    var user CreateUser
+    
+    // Bind JSON body
+    if err := c.BindJSON(&user); err != nil {
+        c.AbortWithStatus(http.StatusBadRequest)
+        return
+    }
+    
+    // Or bind form data
+    // c.BindForm(&user)
+    
+    // Or bind query parameters
+    // c.BindQuery(&user)
+    
+    // Or bind headers
+    // c.BindHeader(&user)
+    
+    c.JSON(http.StatusCreated, user)
+})</code></pre>
+            </div>
+            <h2>Supported Tags</h2>
+            <table>
+                <thead><tr><th>Tag</th><th>Source</th></tr></thead>
+                <tbody>
+                    <tr><td><code>json:"name"</code></td><td>JSON body</td></tr>
+                    <tr><td><code>form:"name"</code></td><td>Form data</td></tr>
+                    <tr><td><code>query:"name"</code></td><td>Query string</td></tr>
+                    <tr><td><code>header:"X-Name"</code></td><td>HTTP headers</td></tr>
+                </tbody>
+            </table>
+            <nav class="docs-nav">
+                <a href="middleware.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Middleware</span></a>
+                <a href="validation.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Validation →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

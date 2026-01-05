@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html" class="active">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>Getting Started with Rue</h1>
+            <p>Rue is a high-performance, feature-rich web framework for Go with minimal dependencies. It's designed to be fast, flexible, and easy to use.</p>
+
+            <h2 id="features">Features</h2>
+            <ul>
+                <li><strong>Blazing Fast Router</strong> - Radix tree-based routing with ~8ns static route matching</li>
+                <li><strong>Rich Middleware</strong> - Logger, Recovery, CORS, Rate Limiter, JWT, API Key</li>
+                <li><strong>Data Binding</strong> - JSON, XML, Form, Query binding with validation</li>
+                <li><strong>WebSocket</strong> - Full RFC 6455 implementation with Hub for broadcasting</li>
+                <li><strong>SSE</strong> - Server-Sent Events support</li>
+                <li><strong>GraphQL</strong> - Built-in GraphQL handler with Playground</li>
+                <li><strong>gRPC</strong> - Seamless gRPC integration with middleware adapter</li>
+                <li><strong>QUIC/HTTP3</strong> - Next-generation protocol support</li>
+                <li><strong>Compression</strong> - Gzip and Brotli with auto-negotiation</li>
+            </ul>
+
+            <h2 id="installation">Installation</h2>
+            <p>Rue requires Go 1.21 or later. Install it using go get:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">bash</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">go get github.com/ch-hash-lab/rue</code></pre>
+            </div>
+
+            <h2 id="quick-start">Quick Start</h2>
+            <p>Create a new file <code>main.go</code>:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">package main
+
+import (
+    "net/http"
+    "github.com/ch-hash-lab/rue"
+)
+
+func main() {
+    // Create engine with default middleware (Logger + Recovery)
+    r := rue.Default()
+
+    // Simple route
+    r.GET("/", func(c *rue.Context) {
+        c.JSON(http.StatusOK, rue.H{"message": "Hello, Rue!"})
+    })
+
+    // Path parameters
+    r.GET("/users/:id", func(c *rue.Context) {
+        id := c.Param("id")
+        c.JSON(http.StatusOK, rue.H{"user_id": id})
+    })
+
+    // Query parameters
+    r.GET("/search", func(c *rue.Context) {
+        q := c.Query("q")
+        page := c.DefaultQuery("page", "1")
+        c.JSON(http.StatusOK, rue.H{"query": q, "page": page})
+    })
+
+    // Start server
+    r.Run(":8080")
+}</code></pre>
+            </div>
+
+            <p>Run your application:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">bash</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">go run main.go</code></pre>
+            </div>
+
+            <p>Visit <code>http://localhost:8080</code> in your browser!</p>
+
+            <h2 id="engine-modes">Engine Modes</h2>
+            <p>Rue provides two ways to create an engine:</p>
+
+            <h3>Default()</h3>
+            <p>Creates an engine with Logger and Recovery middleware pre-configured:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.Default()  // Includes Logger + Recovery</code></pre>
+            </div>
+
+            <h3>New()</h3>
+            <p>Creates a blank engine without any middleware:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.New()  // No middleware
+r.Use(rue.Logger())    // Add manually
+r.Use(rue.Recovery())</code></pre>
+            </div>
+
+            <div class="callout callout-info">
+                <div class="callout-title">💡 Tip</div>
+                <p>Use <code>Default()</code> for most applications. Use <code>New()</code> when you need full control over middleware.</p>
+            </div>
+
+            <h2 id="next-steps">Next Steps</h2>
+            <ul>
+                <li>Learn about <a href="routing.html">Routing</a> and path parameters</li>
+                <li>Explore <a href="middleware.html">Middleware</a> options</li>
+                <li>Set up <a href="binding.html">Data Binding</a> and validation</li>
+                <li>Add real-time features with <a href="websocket.html">WebSocket</a></li>
+            </ul>
+
+            <nav class="docs-nav">
+                <div></div>
+                <a href="routing.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Routing →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

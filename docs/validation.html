@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html" class="active">Validation</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>Validation</h1>
+            <p>Rue includes a built-in validator for struct validation using tags.</p>
+            <h2>Usage</h2>
+            <div class="code-block">
+                <pre><code class="language-go">type CreateUser struct {
+    Name  string `json:"name" validate:"required"`
+    Email string `json:"email" validate:"required,email"`
+    Age   int    `json:"age" validate:"min=18,max=120"`
+    Role  string `json:"role" validate:"oneof=admin user guest"`
+}
+
+r.POST("/users", func(c *rue.Context) {
+    var user CreateUser
+    if err := c.BindJSON(&user); err != nil {
+        c.AbortWithStatus(http.StatusBadRequest)
+        return
+    }
+    
+    if err := c.Validate(&user); err != nil {
+        c.JSON(http.StatusBadRequest, rue.H{"errors": err})
+        return
+    }
+    
+    c.JSON(http.StatusCreated, user)
+})</code></pre>
+            </div>
+            <h2>Validation Rules</h2>
+            <table>
+                <thead><tr><th>Rule</th><th>Description</th><th>Example</th></tr></thead>
+                <tbody>
+                    <tr><td><code>required</code></td><td>Field must not be empty</td><td><code>validate:"required"</code></td></tr>
+                    <tr><td><code>min=N</code></td><td>Minimum value/length</td><td><code>validate:"min=18"</code></td></tr>
+                    <tr><td><code>max=N</code></td><td>Maximum value/length</td><td><code>validate:"max=100"</code></td></tr>
+                    <tr><td><code>len=N</code></td><td>Exact length</td><td><code>validate:"len=10"</code></td></tr>
+                    <tr><td><code>email</code></td><td>Valid email format</td><td><code>validate:"email"</code></td></tr>
+                    <tr><td><code>url</code></td><td>Valid URL format</td><td><code>validate:"url"</code></td></tr>
+                    <tr><td><code>regex=pattern</code></td><td>Match regex</td><td><code>validate:"regex=^[a-z]+$"</code></td></tr>
+                    <tr><td><code>oneof=a b c</code></td><td>One of values</td><td><code>validate:"oneof=admin user"</code></td></tr>
+                </tbody>
+            </table>
+            <nav class="docs-nav">
+                <a href="binding.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Data Binding</span></a>
+                <a href="websocket.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">WebSocket →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

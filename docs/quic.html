@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUIC/HTTP3 - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html" class="active">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>QUIC/HTTP3</h1>
+            <p>Rue supports HTTP/3 via the QUIC protocol for improved performance.</p>
+            <h2>Basic Usage</h2>
+            <div class="code-block">
+                <pre><code class="language-go">r := rue.Default()
+
+r.GET("/", func(c *rue.Context) {
+    c.JSON(http.StatusOK, rue.H{"protocol": "HTTP/3"})
+})
+
+// Run HTTP/3 server (requires TLS)
+r.RunQUIC(":443", "cert.pem", "key.pem")</code></pre>
+            </div>
+            <h2>Custom Configuration</h2>
+            <div class="code-block">
+                <pre><code class="language-go">config := &rue.QUICConfig{
+    MaxIncomingStreams: 100,
+    IdleTimeout:        30 * time.Second,
+    Enable0RTT:         true,
+}
+
+r.RunQUICWithConfig(":443", "cert.pem", "key.pem", config)</code></pre>
+            </div>
+            <h2>Alt-Svc Header</h2>
+            <p>Advertise HTTP/3 support on HTTP/1.1 or HTTP/2:</p>
+            <div class="code-block">
+                <pre><code class="language-go">// Add Alt-Svc middleware
+r.Use(rue.AltSvc(":443"))
+
+// Run both HTTP/2 and HTTP/3
+go r.RunTLS(":443", "cert.pem", "key.pem")
+r.RunQUIC(":443", "cert.pem", "key.pem")</code></pre>
+            </div>
+            <h2>Benefits of HTTP/3</h2>
+            <ul>
+                <li>Faster connection establishment (0-RTT)</li>
+                <li>No head-of-line blocking</li>
+                <li>Better performance on lossy networks</li>
+                <li>Connection migration (mobile-friendly)</li>
+            </ul>
+            <nav class="docs-nav">
+                <a href="grpc.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← gRPC</span></a>
+                <a href="compression.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Compression →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

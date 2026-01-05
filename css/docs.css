@@ -1,0 +1,443 @@
+/* Documentation specific styles */
+
+/* Docs Layout */
+.docs-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+    padding-top: 64px;
+}
+
+/* Sidebar */
+.docs-sidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    width: 280px;
+    height: calc(100vh - 64px);
+    background: var(--bg-darker);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 0;
+}
+
+.sidebar-section {
+    margin-bottom: 24px;
+}
+
+.sidebar-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 0 24px;
+    margin-bottom: 8px;
+}
+
+.sidebar-nav {
+    list-style: none;
+}
+
+.sidebar-nav a {
+    display: block;
+    padding: 8px 24px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    border-left: 2px solid transparent;
+}
+
+.sidebar-nav a:hover {
+    color: var(--text-primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.sidebar-nav a.active {
+    color: var(--primary-light);
+    background: rgba(99, 102, 241, 0.1);
+    border-left-color: var(--primary);
+}
+
+/* Main Content */
+.docs-content {
+    margin-left: 280px;
+    padding: 48px;
+    max-width: 900px;
+}
+
+.docs-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.docs-content h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.docs-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 32px;
+    margin-bottom: 12px;
+}
+
+.docs-content h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 8px;
+}
+
+.docs-content p {
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.7;
+}
+
+.docs-content ul,
+.docs-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+}
+
+.docs-content li {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.docs-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Code blocks */
+.code-block {
+    position: relative;
+    margin: 24px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+}
+
+.code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border);
+}
+
+.code-block-lang {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.code-block-copy {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.code-block-copy:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.code-block pre {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+}
+
+.code-block code {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Inline code */
+.docs-content code:not([class*="language-"]) {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* Tables */
+.docs-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.95rem;
+}
+
+.docs-content th,
+.docs-content td {
+    padding: 12px 16px;
+    text-align: left;
+    border: 1px solid var(--border);
+}
+
+.docs-content th {
+    background: var(--bg-card);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.docs-content td {
+    color: var(--text-secondary);
+}
+
+.docs-content td code {
+    font-size: 0.85em;
+}
+
+/* Callouts */
+.callout {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 24px 0;
+    border-left: 4px solid;
+}
+
+.callout-info {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--primary);
+}
+
+.callout-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: var(--warning);
+}
+
+.callout-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--success);
+}
+
+.callout-error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--error);
+}
+
+.callout-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.callout p {
+    margin: 0;
+}
+
+/* Navigation */
+.docs-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+}
+
+.docs-nav-link {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.2s;
+    max-width: 45%;
+}
+
+.docs-nav-link:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--primary);
+}
+
+.docs-nav-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.docs-nav-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.docs-nav-link.next {
+    text-align: right;
+    margin-left: auto;
+}
+
+/* Sidebar toggle for mobile */
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    background: var(--primary);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .docs-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .docs-sidebar {
+        position: fixed;
+        left: -280px;
+        z-index: 1000;
+        transition: left 0.3s;
+    }
+
+    .docs-sidebar.active {
+        left: 0;
+    }
+
+    .docs-content {
+        margin-left: 0;
+        padding: 32px 24px;
+    }
+
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 640px) {
+    .docs-content h1 {
+        font-size: 2rem;
+    }
+
+    .docs-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .docs-nav {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .docs-nav-link {
+        max-width: 100%;
+    }
+
+    .docs-nav-link.next {
+        text-align: left;
+    }
+}
+
+/* Anchor links */
+.docs-content h2[id],
+.docs-content h3[id] {
+    position: relative;
+}
+
+.docs-content h2[id]:hover .anchor,
+.docs-content h3[id]:hover .anchor {
+    opacity: 1;
+}
+
+.anchor {
+    position: absolute;
+    left: -24px;
+    opacity: 0;
+    color: var(--text-muted);
+    transition: opacity 0.2s;
+}
+
+.anchor:hover {
+    color: var(--primary);
+}
+
+/* API Reference specific */
+.api-method {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 8px;
+}
+
+.api-method.get { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.api-method.post { background: rgba(99, 102, 241, 0.2); color: #6366f1; }
+.api-method.put { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.api-method.delete { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+.api-signature {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    background: var(--code-bg);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+    overflow-x: auto;
+}
+
+.api-params {
+    margin: 16px 0;
+}
+
+.api-param {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.api-param:last-child {
+    border-bottom: none;
+}
+
+.api-param-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--primary-light);
+    min-width: 120px;
+}
+
+.api-param-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    min-width: 100px;
+}
+
+.api-param-desc {
+    color: var(--text-secondary);
+}

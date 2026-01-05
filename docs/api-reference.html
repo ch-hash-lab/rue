@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html" class="active">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html" class="active">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>API Reference</h1>
+            <p>Complete API reference for the Rue framework.</p>
+
+            <h2 id="engine">Engine</h2>
+            
+            <h3>Creation</h3>
+            <div class="api-signature">func New() *Engine</div>
+            <p>Creates a new Engine without any middleware.</p>
+
+            <div class="api-signature">func Default() *Engine</div>
+            <p>Creates a new Engine with Logger and Recovery middleware.</p>
+
+            <h3>Routing Methods</h3>
+            <div class="api-signature">func (e *Engine) GET(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) POST(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) PUT(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) DELETE(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) PATCH(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) HEAD(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) OPTIONS(path string, handlers ...HandlerFunc)</div>
+            <div class="api-signature">func (e *Engine) Any(path string, handlers ...HandlerFunc)</div>
+
+            <h3>Server Methods</h3>
+            <div class="api-signature">func (e *Engine) Run(addr string) error</div>
+            <p>Starts HTTP server on the specified address.</p>
+
+            <div class="api-signature">func (e *Engine) RunTLS(addr, certFile, keyFile string) error</div>
+            <p>Starts HTTPS server with TLS.</p>
+
+            <div class="api-signature">func (e *Engine) RunQUIC(addr, certFile, keyFile string) error</div>
+            <p>Starts HTTP/3 server with QUIC.</p>
+
+            <div class="api-signature">func (e *Engine) Shutdown(ctx context.Context) error</div>
+            <p>Gracefully shuts down the server.</p>
+
+            <h2 id="context">Context</h2>
+
+            <h3>Request Data</h3>
+            <div class="api-signature">func (c *Context) Param(key string) string</div>
+            <p>Returns path parameter value.</p>
+
+            <div class="api-signature">func (c *Context) Query(key string) string</div>
+            <p>Returns query parameter value.</p>
+
+            <div class="api-signature">func (c *Context) DefaultQuery(key, defaultValue string) string</div>
+            <p>Returns query parameter or default value.</p>
+
+            <div class="api-signature">func (c *Context) GetHeader(key string) string</div>
+            <p>Returns request header value.</p>
+
+            <h3>Data Binding</h3>
+            <div class="api-signature">func (c *Context) BindJSON(obj any) error</div>
+            <div class="api-signature">func (c *Context) BindXML(obj any) error</div>
+            <div class="api-signature">func (c *Context) BindForm(obj any) error</div>
+            <div class="api-signature">func (c *Context) BindQuery(obj any) error</div>
+            <div class="api-signature">func (c *Context) BindHeader(obj any) error</div>
+
+            <h3>Response Methods</h3>
+            <div class="api-signature">func (c *Context) JSON(code int, obj any)</div>
+            <div class="api-signature">func (c *Context) XML(code int, obj any)</div>
+            <div class="api-signature">func (c *Context) String(code int, format string, values ...any)</div>
+            <div class="api-signature">func (c *Context) Text(code int, text string)</div>
+            <div class="api-signature">func (c *Context) Data(code int, contentType string, data []byte)</div>
+            <div class="api-signature">func (c *Context) File(filepath string)</div>
+            <div class="api-signature">func (c *Context) Stream(code int, contentType string, reader io.Reader)</div>
+            <div class="api-signature">func (c *Context) Redirect(code int, location string)</div>
+
+            <h3>Flow Control</h3>
+            <div class="api-signature">func (c *Context) Next()</div>
+            <p>Executes the next handler in the chain.</p>
+
+            <div class="api-signature">func (c *Context) Abort()</div>
+            <p>Stops the handler chain.</p>
+
+            <div class="api-signature">func (c *Context) AbortWithStatus(code int)</div>
+            <p>Stops chain and writes status code.</p>
+
+            <div class="api-signature">func (c *Context) AbortWithError(code int, err error)</div>
+            <p>Stops chain and writes error.</p>
+
+            <h3>Context Values</h3>
+            <div class="api-signature">func (c *Context) Set(key string, value any)</div>
+            <div class="api-signature">func (c *Context) Get(key string) (any, bool)</div>
+            <div class="api-signature">func (c *Context) MustGet(key string) any</div>
+
+            <h2 id="middleware">Middleware</h2>
+            <div class="api-signature">func Logger() HandlerFunc</div>
+            <div class="api-signature">func LoggerWithConfig(config LoggerConfig) HandlerFunc</div>
+            <div class="api-signature">func Recovery() HandlerFunc</div>
+            <div class="api-signature">func CORS() HandlerFunc</div>
+            <div class="api-signature">func CORSWithConfig(config CORSConfig) HandlerFunc</div>
+            <div class="api-signature">func RateLimiter(rate float64, burst int) HandlerFunc</div>
+            <div class="api-signature">func RateLimiterWithConfig(config RateLimiterConfig) HandlerFunc</div>
+            <div class="api-signature">func JWT(secret []byte) HandlerFunc</div>
+            <div class="api-signature">func APIKey(validator func(string) bool) HandlerFunc</div>
+            <div class="api-signature">func Gzip() HandlerFunc</div>
+            <div class="api-signature">func Brotli() HandlerFunc</div>
+            <div class="api-signature">func Compress() HandlerFunc</div>
+
+            <h2 id="validation">Validation</h2>
+            <div class="api-signature">func (c *Context) Validate(obj any) error</div>
+            <p>Validates struct using tags: required, min, max, len, email, url, regex, oneof</p>
+
+            <h2 id="types">Types</h2>
+            <div class="api-signature">type H map[string]any</div>
+            <p>Shortcut for map[string]any, commonly used for JSON responses.</p>
+
+            <div class="api-signature">type HandlerFunc func(*Context)</div>
+            <p>Handler function signature.</p>
+
+            <nav class="docs-nav">
+                <a href="testing.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Testing</span>
+                </a>
+                <div></div>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

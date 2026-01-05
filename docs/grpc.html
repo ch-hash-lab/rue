@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gRPC - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html" class="active">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>gRPC Integration</h1>
+            <p>Rue provides seamless gRPC integration with middleware support, allowing you to use Rue's middleware in gRPC services.</p>
+
+            <h2 id="basic-setup">Basic Setup</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">import (
+    "google.golang.org/grpc"
+    "github.com/ch-hash-lab/rue"
+    pb "your/proto/package"
+)
+
+func main() {
+    // Create Rue engine
+    engine := rue.New()
+    
+    // Create gRPC server with Rue
+    gs := rue.NewGRPCServer(engine)
+    
+    // Add Rue middleware as interceptors
+    gs.Use(func(c *rue.Context) {
+        c.Set("request_id", generateID())
+        c.Next()
+    })
+    
+    // Add native gRPC interceptors
+    gs.UseUnary(rue.GRPCLogger())
+    gs.UseUnary(rue.GRPCRecovery())
+    
+    // Build and register services
+    server := gs.Build()
+    pb.RegisterMyServiceServer(server, &myService{})
+    
+    // Run server
+    gs.Run(":50051")
+}</code></pre>
+            </div>
+
+            <h2 id="interceptors">Built-in Interceptors</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Logger - logs gRPC calls
+gs.UseUnary(rue.GRPCLogger())
+
+// Recovery - recovers from panics
+gs.UseUnary(rue.GRPCRecovery())
+
+// Authentication
+authFunc := func(ctx context.Context) (context.Context, error) {
+    md, ok := metadata.FromIncomingContext(ctx)
+    if !ok {
+        return nil, status.Error(codes.Unauthenticated, "no metadata")
+    }
+    
+    tokens := md.Get("authorization")
+    if len(tokens) == 0 {
+        return nil, status.Error(codes.Unauthenticated, "no token")
+    }
+    
+    user, err := validateToken(tokens[0])
+    if err != nil {
+        return nil, status.Error(codes.Unauthenticated, "invalid token")
+    }
+    
+    return context.WithValue(ctx, "user", user), nil
+}
+
+gs.UseUnary(rue.GRPCAuth(authFunc))
+gs.UseStream(rue.GRPCStreamAuth(authFunc))</code></pre>
+            </div>
+
+            <h2 id="context">Accessing Context in Handlers</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">func (s *myService) MyMethod(ctx context.Context, req *pb.Request) (*pb.Response, error) {
+    // Get Rue's GRPCContext
+    gc := rue.GetGRPCContext(ctx)
+    if gc != nil {
+        // Access values set by middleware
+        requestID, _ := gc.Get("request_id")
+        
+        // Access metadata
+        auth := gc.GetMetadata("authorization")
+        
+        // Set values for later middleware
+        gc.Set("processed", true)
+    }
+    
+    return &pb.Response{}, nil
+}</code></pre>
+            </div>
+
+            <h2 id="stream">Stream Interceptors</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Add stream interceptors
+gs.UseStream(rue.GRPCStreamLogger())
+gs.UseStream(rue.GRPCStreamRecovery())
+
+// Custom stream interceptor
+gs.UseStream(func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+    log.Printf("Stream started: %s", info.FullMethod)
+    err := handler(srv, ss)
+    log.Printf("Stream ended: %s", info.FullMethod)
+    return err
+})</code></pre>
+            </div>
+
+            <h2 id="methods">GRPCServer Methods</h2>
+            <table>
+                <thead>
+                    <tr><th>Method</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>Use(middleware)</code></td><td>Add Rue middleware</td></tr>
+                    <tr><td><code>UseUnary(interceptor)</code></td><td>Add unary interceptor</td></tr>
+                    <tr><td><code>UseStream(interceptor)</code></td><td>Add stream interceptor</td></tr>
+                    <tr><td><code>Build()</code></td><td>Build grpc.Server</td></tr>
+                    <tr><td><code>Run(addr)</code></td><td>Start server</td></tr>
+                </tbody>
+            </table>
+
+            <nav class="docs-nav">
+                <a href="graphql.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← GraphQL</span>
+                </a>
+                <a href="quic.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">QUIC/HTTP3 →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

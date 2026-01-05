@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html" class="active">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>Server-Sent Events (SSE)</h1>
+            <p>SSE allows servers to push data to clients over HTTP.</p>
+            <h2>Basic Usage</h2>
+            <div class="code-block">
+                <pre><code class="language-go">r.GET("/events", func(c *rue.Context) {
+    client := rue.NewSSEClient(c)
+    defer client.Close()
+    
+    for i := 0; i < 10; i++ {
+        client.SendEvent("update", fmt.Sprintf("Event %d", i))
+        time.Sleep(time.Second)
+    }
+})</code></pre>
+            </div>
+            <h2>SSEClient Methods</h2>
+            <table>
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>SendEvent(event, data)</code></td><td>Send named event</td></tr>
+                    <tr><td><code>SendData(data)</code></td><td>Send data without event name</td></tr>
+                    <tr><td><code>SendComment(comment)</code></td><td>Send comment (keep-alive)</td></tr>
+                    <tr><td><code>Close()</code></td><td>Close the connection</td></tr>
+                </tbody>
+            </table>
+            <h2>Client Example</h2>
+            <div class="code-block">
+                <pre><code class="language-go">const eventSource = new EventSource('/events');
+
+eventSource.addEventListener('update', (e) => {
+    console.log('Update:', e.data);
+});
+
+eventSource.onerror = () => {
+    console.log('Connection lost');
+};</code></pre>
+            </div>
+            <nav class="docs-nav">
+                <a href="websocket.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← WebSocket</span></a>
+                <a href="graphql.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">GraphQL →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

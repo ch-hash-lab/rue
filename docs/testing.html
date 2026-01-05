@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html" class="active">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>Testing</h1>
+            <p>Rue includes a built-in Agent for integration testing without starting a server.</p>
+            <h2>Basic Usage</h2>
+            <div class="code-block">
+                <pre><code class="language-go">func TestAPI(t *testing.T) {
+    r := rue.New()
+    r.GET("/users/:id", getUser)
+    
+    agent := rue.NewAgent(r)
+    
+    // Simple GET
+    resp := agent.Get("/users/123")
+    if resp.StatusCode != http.StatusOK {
+        t.Errorf("Expected 200, got %d", resp.StatusCode)
+    }
+    
+    // Parse JSON response
+    var result map[string]any
+    resp.JSON(&result)
+}</code></pre>
+            </div>
+            <h2>Request Methods</h2>
+            <div class="code-block">
+                <pre><code class="language-go">// GET request
+resp := agent.Get("/path")
+
+// POST with JSON
+resp := agent.PostJSON("/users", map[string]string{"name": "John"})
+
+// POST with form data
+resp := agent.PostForm("/login", url.Values{"user": {"john"}, "pass": {"secret"}})
+
+// With headers
+agent.SetHeader("Authorization", "Bearer token")
+resp := agent.Get("/protected")</code></pre>
+            </div>
+            <h2>Request Builder</h2>
+            <div class="code-block">
+                <pre><code class="language-go">resp := agent.NewRequest("POST", "/search").
+    Query("q", "test").
+    Query("page", "1").
+    Header("X-Custom", "value").
+    JSON(map[string]string{"filter": "active"}).
+    Send()</code></pre>
+            </div>
+            <h2>Response Methods</h2>
+            <table>
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>resp.StatusCode</code></td><td>HTTP status code</td></tr>
+                    <tr><td><code>resp.Body</code></td><td>Raw response body</td></tr>
+                    <tr><td><code>resp.JSON(&v)</code></td><td>Parse JSON into struct</td></tr>
+                    <tr><td><code>resp.Header.Get(key)</code></td><td>Get response header</td></tr>
+                </tbody>
+            </table>
+            <nav class="docs-nav">
+                <a href="compression.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Compression</span></a>
+                <a href="api-reference.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">API Reference →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

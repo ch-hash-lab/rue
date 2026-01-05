@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routing - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html" class="active">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>Routing</h1>
+            <p>Rue uses a high-performance radix tree router that achieves ~8ns for static routes and ~27ns for parameterized routes with zero allocations.</p>
+
+            <h2 id="basic-routes">Basic Routes</h2>
+            <p>Register routes using HTTP method functions:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.Default()
+
+r.GET("/path", handler)
+r.POST("/path", handler)
+r.PUT("/path", handler)
+r.DELETE("/path", handler)
+r.PATCH("/path", handler)
+r.HEAD("/path", handler)
+r.OPTIONS("/path", handler)
+
+// Match all HTTP methods
+r.Any("/path", handler)</code></pre>
+            </div>
+
+            <h2 id="path-parameters">Path Parameters</h2>
+            <p>Use <code>:name</code> for named parameters and <code>*name</code> for wildcard parameters:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Named parameter
+r.GET("/users/:id", func(c *rue.Context) {
+    id := c.Param("id")
+    // /users/123 -> id = "123"
+    c.JSON(http.StatusOK, rue.H{"id": id})
+})
+
+// Multiple parameters
+r.GET("/users/:userId/posts/:postId", func(c *rue.Context) {
+    userId := c.Param("userId")
+    postId := c.Param("postId")
+    c.JSON(http.StatusOK, rue.H{
+        "user_id": userId,
+        "post_id": postId,
+    })
+})
+
+// Wildcard parameter (catches everything after)
+r.GET("/files/*filepath", func(c *rue.Context) {
+    path := c.Param("filepath")
+    // /files/docs/readme.md -> filepath = "docs/readme.md"
+    c.JSON(http.StatusOK, rue.H{"path": path})
+})</code></pre>
+            </div>
+
+            <h2 id="route-groups">Route Groups</h2>
+            <p>Group routes with common prefixes and middleware:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Create a group
+api := r.Group("/api")
+{
+    api.GET("/users", listUsers)      // GET /api/users
+    api.POST("/users", createUser)    // POST /api/users
+}
+
+// Nested groups with middleware
+v1 := api.Group("/v1")
+v1.Use(authMiddleware)
+{
+    v1.GET("/posts", listPosts)       // GET /api/v1/posts
+    v1.POST("/posts", createPost)     // POST /api/v1/posts
+}
+
+// Admin group with multiple middleware
+admin := r.Group("/admin")
+admin.Use(authMiddleware, adminOnly)
+{
+    admin.GET("/stats", getStats)
+    admin.DELETE("/users/:id", deleteUser)
+}</code></pre>
+            </div>
+
+            <h2 id="query-parameters">Query Parameters</h2>
+            <p>Access query string parameters:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// GET /search?q=golang&page=2&limit=10
+r.GET("/search", func(c *rue.Context) {
+    // Get single value
+    q := c.Query("q")           // "golang"
+    
+    // Get with default value
+    page := c.DefaultQuery("page", "1")    // "2"
+    limit := c.DefaultQuery("limit", "20") // "10"
+    
+    // Get all values for a key
+    tags := c.QueryArray("tags")  // []string
+    
+    c.JSON(http.StatusOK, rue.H{
+        "query": q,
+        "page":  page,
+        "limit": limit,
+        "tags":  tags,
+    })
+})</code></pre>
+            </div>
+
+            <h2 id="static-files">Static Files</h2>
+            <p>Serve static files and directories:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Serve a directory
+r.Static("/assets", "./public/assets")
+
+// Serve a single file
+r.StaticFile("/favicon.ico", "./public/favicon.ico")
+
+// Custom file server with more control
+r.GET("/files/*filepath", func(c *rue.Context) {
+    filepath := c.Param("filepath")
+    c.File("./uploads/" + filepath)
+})</code></pre>
+            </div>
+
+            <h2 id="redirects">Redirects</h2>
+            <p>Redirect requests to different URLs:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Temporary redirect (302)
+r.GET("/old", func(c *rue.Context) {
+    c.Redirect(http.StatusFound, "/new")
+})
+
+// Permanent redirect (301)
+r.GET("/legacy", func(c *rue.Context) {
+    c.Redirect(http.StatusMovedPermanently, "/modern")
+})</code></pre>
+            </div>
+
+            <h2 id="route-priority">Route Priority</h2>
+            <p>Routes are matched in the following priority order:</p>
+
+            <ol>
+                <li><strong>Static routes</strong> - Exact path matches</li>
+                <li><strong>Named parameters</strong> - <code>:param</code> patterns</li>
+                <li><strong>Wildcard parameters</strong> - <code>*param</code> patterns</li>
+            </ol>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.GET("/users/new", newUserForm)     // Matches first for /users/new
+r.GET("/users/:id", getUser)         // Matches /users/123
+r.GET("/users/*action", userAction)  // Matches /users/123/edit/profile</code></pre>
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ Route Conflicts</div>
+                <p>Be careful with overlapping routes. Static routes should be registered before parameterized routes with the same prefix.</p>
+            </div>
+
+            <h2 id="benchmarks">Performance</h2>
+            <p>Rue's router is optimized for speed:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Route Type</th>
+                        <th>Time</th>
+                        <th>Allocations</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Static Route</td>
+                        <td>~8ns</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>Param Route</td>
+                        <td>~27ns</td>
+                        <td>1</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <nav class="docs-nav">
+                <a href="getting-started.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Getting Started</span>
+                </a>
+                <a href="context.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Context →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

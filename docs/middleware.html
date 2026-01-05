@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Middleware - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html" class="active">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>Middleware</h1>
+            <p>Middleware in Rue allows you to execute code before and after request handlers. Rue comes with several built-in middleware and makes it easy to create custom ones.</p>
+
+            <h2 id="using-middleware">Using Middleware</h2>
+            <p>Apply middleware globally or to specific route groups:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.New()
+
+// Global middleware
+r.Use(rue.Logger())
+r.Use(rue.Recovery())
+
+// Group-specific middleware
+api := r.Group("/api")
+api.Use(rue.CORS())
+{
+    api.GET("/users", listUsers)
+}
+
+// Route-specific middleware
+r.GET("/admin", adminOnly(), adminHandler)</code></pre>
+            </div>
+
+            <h2 id="logger">Logger</h2>
+            <p>Logs HTTP requests with timing information:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Default logger
+r.Use(rue.Logger())
+
+// With configuration
+r.Use(rue.LoggerWithConfig(rue.LoggerConfig{
+    SkipPaths: []string{"/health", "/metrics"},
+}))</code></pre>
+            </div>
+
+            <p>Output example:</p>
+            <pre><code>[RUE] 2024/01/15 - 10:30:45 | 200 |     1.234ms | 192.168.1.1 | GET /api/users</code></pre>
+
+            <h2 id="recovery">Recovery</h2>
+            <p>Recovers from panics and returns a 500 error:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.Use(rue.Recovery())</code></pre>
+            </div>
+
+            <h2 id="cors">CORS</h2>
+            <p>Handle Cross-Origin Resource Sharing:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Default CORS (allows all origins)
+r.Use(rue.CORS())
+
+// Custom configuration
+r.Use(rue.CORSWithConfig(rue.CORSConfig{
+    AllowOrigins:     []string{"https://example.com", "https://app.example.com"},
+    AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+    AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+    ExposeHeaders:    []string{"Content-Length"},
+    AllowCredentials: true,
+    MaxAge:           86400,
+}))</code></pre>
+            </div>
+
+            <h2 id="rate-limiter">Rate Limiter</h2>
+            <p>Limit request rates per client:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Simple rate limiter: 10 requests/second, burst of 20
+r.Use(rue.RateLimiter(10, 20))
+
+// Custom configuration
+r.Use(rue.RateLimiterWithConfig(rue.RateLimiterConfig{
+    Rate:  100,   // 100 requests per second
+    Burst: 200,   // Allow burst of 200
+    KeyFunc: func(c *rue.Context) string {
+        // Rate limit by API key instead of IP
+        return c.GetHeader("X-API-Key")
+    },
+}))</code></pre>
+            </div>
+
+            <h2 id="jwt">JWT Authentication</h2>
+            <p>Validate JSON Web Tokens:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">secret := []byte("your-secret-key")
+
+// Generate a token
+claims := &rue.JWTClaims{
+    Subject:   "user123",
+    ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+    Custom: map[string]any{
+        "role": "admin",
+        "permissions": []string{"read", "write"},
+    },
+}
+token, err := rue.GenerateToken(claims, secret)
+
+// Protect routes with JWT middleware
+api := r.Group("/api")
+api.Use(rue.JWT(secret))
+{
+    api.GET("/profile", func(c *rue.Context) {
+        // Access claims from context
+        claims, _ := c.Get("jwt_claims")
+        jwtClaims := claims.(*rue.JWTClaims)
+        
+        c.JSON(http.StatusOK, rue.H{
+            "user_id": jwtClaims.Subject,
+            "role":    jwtClaims.Custom["role"],
+        })
+    })
+}</code></pre>
+            </div>
+
+            <h2 id="api-key">API Key Authentication</h2>
+            <p>Validate API keys from headers or query parameters:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Simple API key validation
+r.Use(rue.APIKey(func(key string) bool {
+    validKeys := map[string]bool{
+        "key1": true,
+        "key2": true,
+    }
+    return validKeys[key]
+}))
+
+// Custom configuration
+r.Use(rue.APIKeyWithConfig(rue.APIKeyConfig{
+    KeyLookup: "header:X-API-Key",  // or "query:api_key"
+    Validator: func(key string) bool {
+        // Validate against database
+        return db.ValidateAPIKey(key)
+    },
+}))</code></pre>
+            </div>
+
+            <h2 id="compression">Compression</h2>
+            <p>Compress responses with Gzip or Brotli:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Auto-select best compression (prefers Brotli)
+r.Use(rue.Compress())
+
+// Gzip only
+r.Use(rue.Gzip())
+
+// Brotli only
+r.Use(rue.Brotli())</code></pre>
+            </div>
+
+            <h2 id="custom-middleware">Custom Middleware</h2>
+            <p>Create your own middleware:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">func RequestID() rue.HandlerFunc {
+    return func(c *rue.Context) {
+        // Before request
+        requestID := uuid.New().String()
+        c.Set("request_id", requestID)
+        c.SetHeader("X-Request-ID", requestID)
+        
+        c.Next()  // Process request
+        
+        // After request
+        // Access response status, timing, etc.
+    }
+}
+
+func Timing() rue.HandlerFunc {
+    return func(c *rue.Context) {
+        start := time.Now()
+        
+        c.Next()
+        
+        duration := time.Since(start)
+        c.SetHeader("X-Response-Time", duration.String())
+        log.Printf("Request took %v", duration)
+    }
+}
+
+// Use custom middleware
+r.Use(RequestID())
+r.Use(Timing())</code></pre>
+            </div>
+
+            <h2 id="middleware-order">Middleware Order</h2>
+            <p>Middleware executes in the order they are added:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.Use(A())  // Executes first (before)
+r.Use(B())  // Executes second (before)
+r.Use(C())  // Executes third (before)
+
+// Request flow:
+// A (before) -> B (before) -> C (before) -> Handler -> C (after) -> B (after) -> A (after)</code></pre>
+            </div>
+
+            <div class="callout callout-info">
+                <div class="callout-title">💡 Best Practice</div>
+                <p>Place error handling middleware (Recovery) first, then logging, then authentication, then business logic middleware.</p>
+            </div>
+
+            <h2 id="abort">Aborting Requests</h2>
+            <p>Stop request processing in middleware:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">func AuthRequired() rue.HandlerFunc {
+    return func(c *rue.Context) {
+        token := c.GetHeader("Authorization")
+        if token == "" {
+            c.AbortWithStatus(http.StatusUnauthorized)
+            return  // Important: return after abort
+        }
+        
+        user, err := validateToken(token)
+        if err != nil {
+            c.AbortWithError(http.StatusUnauthorized, err)
+            return
+        }
+        
+        c.Set("user", user)
+        c.Next()
+    }
+}</code></pre>
+            </div>
+
+            <nav class="docs-nav">
+                <a href="context.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Context</span>
+                </a>
+                <a href="binding.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Data Binding →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

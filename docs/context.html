@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html" class="active">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>Context</h1>
+            <p>The Context is the most important part of Rue. It carries request data, response methods, and allows passing values between middleware.</p>
+
+            <h2 id="request-data">Request Data</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.GET("/example", func(c *rue.Context) {
+    // Path parameters
+    id := c.Param("id")
+    
+    // Query parameters
+    q := c.Query("q")
+    page := c.DefaultQuery("page", "1")
+    tags := c.QueryArray("tags")
+    
+    // Headers
+    auth := c.GetHeader("Authorization")
+    contentType := c.GetHeader("Content-Type")
+    
+    // Client info
+    ip := c.ClientIP()
+    method := c.Request.Method
+    path := c.Request.URL.Path
+})</code></pre>
+            </div>
+
+            <h2 id="response-methods">Response Methods</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// JSON response
+c.JSON(http.StatusOK, rue.H{"message": "success"})
+
+// XML response
+c.XML(http.StatusOK, user)
+
+// Plain text (printf-style formatting)
+c.String(http.StatusOK, "Hello %s", name)
+
+// Plain text (no formatting)
+c.Text(http.StatusOK, "Hello World")
+
+// Raw data with content type
+c.Data(http.StatusOK, "text/html", []byte("<h1>Hi</h1>"))
+
+// File download
+c.File("path/to/file.pdf")
+
+// Stream response
+c.Stream(http.StatusOK, "application/octet-stream", reader)
+
+// Redirect
+c.Redirect(http.StatusFound, "/new-location")</code></pre>
+            </div>
+
+            <h2 id="headers">Setting Headers</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">c.SetHeader("X-Custom-Header", "value")
+c.SetHeader("Cache-Control", "no-cache")
+c.SetHeader("Content-Disposition", "attachment; filename=file.pdf")</code></pre>
+            </div>
+
+            <h2 id="context-values">Context Values</h2>
+            <p>Pass data between middleware and handlers:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// In middleware
+func AuthMiddleware() rue.HandlerFunc {
+    return func(c *rue.Context) {
+        user := validateToken(c.GetHeader("Authorization"))
+        c.Set("user", user)
+        c.Set("authenticated", true)
+        c.Next()
+    }
+}
+
+// In handler
+r.GET("/profile", func(c *rue.Context) {
+    // Get with existence check
+    user, exists := c.Get("user")
+    if !exists {
+        c.AbortWithStatus(http.StatusUnauthorized)
+        return
+    }
+    
+    // Get without check (panics if not found)
+    user := c.MustGet("user")
+    
+    c.JSON(http.StatusOK, user)
+})</code></pre>
+            </div>
+
+            <h2 id="flow-control">Flow Control</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Continue to next handler
+c.Next()
+
+// Stop handler chain
+c.Abort()
+
+// Stop and return status
+c.AbortWithStatus(http.StatusForbidden)
+
+// Stop and return error
+c.AbortWithError(http.StatusBadRequest, err)
+
+// Check if aborted
+if c.IsAborted() {
+    return
+}</code></pre>
+            </div>
+
+            <h2 id="cookies">Cookies</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Set cookie
+c.SetCookie("session", "abc123", 3600, "/", "example.com", true, true)
+
+// Get cookie
+session, err := c.Cookie("session")</code></pre>
+            </div>
+
+            <nav class="docs-nav">
+                <a href="routing.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Routing</span>
+                </a>
+                <a href="middleware.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Middleware →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

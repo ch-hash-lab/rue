@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compression - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo"><span class="logo-icon">⚡</span><span class="logo-text">Rue</span></a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html" class="active">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <h1>Compression</h1>
+            <p>Rue supports Gzip and Brotli compression with automatic content negotiation.</p>
+            <h2>Usage</h2>
+            <div class="code-block">
+                <pre><code class="language-go">// Auto-select best compression (prefers Brotli)
+r.Use(rue.Compress())
+
+// Gzip only
+r.Use(rue.Gzip())
+
+// Brotli only
+r.Use(rue.Brotli())</code></pre>
+            </div>
+            <h2>How It Works</h2>
+            <p>The compression middleware:</p>
+            <ol>
+                <li>Checks the <code>Accept-Encoding</code> header</li>
+                <li>Selects the best supported algorithm</li>
+                <li>Compresses the response body</li>
+                <li>Sets the <code>Content-Encoding</code> header</li>
+            </ol>
+            <h2>Benchmarks</h2>
+            <table>
+                <thead><tr><th>Algorithm</th><th>Time</th><th>Compression Ratio</th></tr></thead>
+                <tbody>
+                    <tr><td>Gzip</td><td>~43µs</td><td>Good</td></tr>
+                    <tr><td>Brotli</td><td>~18µs</td><td>Better</td></tr>
+                </tbody>
+            </table>
+            <nav class="docs-nav">
+                <a href="quic.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← QUIC/HTTP3</span></a>
+                <a href="testing.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">Testing →</span></a>
+            </nav>
+        </main>
+    </div>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>

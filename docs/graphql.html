@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphQL - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="stylesheet" href="../css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Getting Started</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Core Concepts</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="routing.html">Routing</a></li>
+                    <li><a href="context.html">Context</a></li>
+                    <li><a href="middleware.html">Middleware</a></li>
+                    <li><a href="binding.html">Data Binding</a></li>
+                    <li><a href="validation.html">Validation</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Features</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="websocket.html">WebSocket</a></li>
+                    <li><a href="sse.html">SSE</a></li>
+                    <li><a href="graphql.html" class="active">GraphQL</a></li>
+                    <li><a href="grpc.html">gRPC</a></li>
+                    <li><a href="quic.html">QUIC/HTTP3</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Advanced</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="compression.html">Compression</a></li>
+                    <li><a href="testing.html">Testing</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <h1>GraphQL</h1>
+            <p>Rue includes a built-in GraphQL handler with an interactive Playground UI.</p>
+
+            <h2 id="basic-setup">Basic Setup</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.Default()
+
+schema := &rue.GraphQLSchema{
+    Query: &rue.ObjectType{
+        Name: "Query",
+        Fields: map[string]*rue.Field{
+            "hello": {
+                Type: rue.StringType,
+                Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                    return "Hello, GraphQL!", nil
+                },
+            },
+        },
+    },
+}
+
+handler := rue.NewGraphQLHandler(schema)
+r.POST("/graphql", handler.Handle)
+r.GET("/graphql", handler.Playground)  // Interactive UI
+
+r.Run(":8080")</code></pre>
+            </div>
+
+            <h2 id="types">Defining Types</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Define a User type
+userType := &rue.ObjectType{
+    Name: "User",
+    Fields: map[string]*rue.Field{
+        "id":    {Type: rue.StringType},
+        "name":  {Type: rue.StringType},
+        "email": {Type: rue.StringType},
+        "age":   {Type: rue.IntType},
+    },
+}
+
+// Use in schema
+schema := &rue.GraphQLSchema{
+    Query: &rue.ObjectType{
+        Name: "Query",
+        Fields: map[string]*rue.Field{
+            "user": {
+                Type: userType,
+                Args: map[string]*rue.Argument{
+                    "id": {Type: rue.StringType},
+                },
+                Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                    id := ctx.Args["id"].(string)
+                    return getUser(id), nil
+                },
+            },
+            "users": {
+                Type: &rue.ListType{OfType: userType},
+                Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                    return getAllUsers(), nil
+                },
+            },
+        },
+    },
+}</code></pre>
+            </div>
+
+            <h2 id="mutations">Mutations</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">schema := &rue.GraphQLSchema{
+    Query: queryType,
+    Mutation: &rue.ObjectType{
+        Name: "Mutation",
+        Fields: map[string]*rue.Field{
+            "createUser": {
+                Type: userType,
+                Args: map[string]*rue.Argument{
+                    "name":  {Type: rue.StringType},
+                    "email": {Type: rue.StringType},
+                },
+                Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                    name := ctx.Args["name"].(string)
+                    email := ctx.Args["email"].(string)
+                    return createUser(name, email), nil
+                },
+            },
+            "deleteUser": {
+                Type: rue.BoolType,
+                Args: map[string]*rue.Argument{
+                    "id": {Type: rue.StringType},
+                },
+                Resolve: func(ctx *rue.ResolveContext) (any, error) {
+                    id := ctx.Args["id"].(string)
+                    return deleteUser(id), nil
+                },
+            },
+        },
+    },
+}</code></pre>
+            </div>
+
+            <h2 id="playground">GraphQL Playground</h2>
+            <p>Access the interactive Playground at <code>GET /graphql</code>:</p>
+            <ul>
+                <li>Write and execute queries</li>
+                <li>Explore schema documentation</li>
+                <li>View query history</li>
+                <li>Set HTTP headers</li>
+            </ul>
+
+            <h2 id="available-types">Available Types</h2>
+            <table>
+                <thead>
+                    <tr><th>Type</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>rue.StringType</code></td><td>String scalar</td></tr>
+                    <tr><td><code>rue.IntType</code></td><td>Integer scalar</td></tr>
+                    <tr><td><code>rue.FloatType</code></td><td>Float scalar</td></tr>
+                    <tr><td><code>rue.BoolType</code></td><td>Boolean scalar</td></tr>
+                    <tr><td><code>&rue.ListType{OfType: T}</code></td><td>List of type T</td></tr>
+                    <tr><td><code>&rue.ObjectType{}</code></td><td>Custom object type</td></tr>
+                </tbody>
+            </table>
+
+            <nav class="docs-nav">
+                <a href="sse.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← SSE</span>
+                </a>
+                <a href="grpc.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">gRPC →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+    <script src="../js/prism.js"></script>
+    <script src="../js/main.js"></script>
+</body>
+</html>
