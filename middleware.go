@@ -15,41 +15,47 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytedance/sonic"
 )
 
-// LoggerConfig defines the config for Logger middleware
-type LoggerConfig struct {
-	Format     string
-	Output     io.Writer
-	TimeFormat string
-	SkipPaths  []string
+// RequestLoggerConfig defines the config for request Logger middleware
+type RequestLoggerConfig struct {
+	Level        LogLevel
+	Format       LogFormat
+	Output       io.Writer
+	SkipPaths    []string
+	EnableCaller bool
+	TimeFormat   string
+	EnableColor  bool
 }
 
-// DefaultLoggerConfig returns the default logger config
-func DefaultLoggerConfig() LoggerConfig {
-	return LoggerConfig{
-		Format:     "[RUE] %s | %3d | %13v | %15s | %-7s %s\n",
-		Output:     os.Stdout,
-		TimeFormat: "2006/01/02 - 15:04:05",
-		SkipPaths:  nil,
+// DefaultRequestLoggerConfig returns the default request logger config
+func DefaultRequestLoggerConfig() RequestLoggerConfig {
+	config := GetModeConfig()
+	return RequestLoggerConfig{
+		Level:        config.LogLevel,
+		Format:       config.LogFormat,
+		Output:       os.Stdout,
+		SkipPaths:    nil,
+		EnableCaller: config.EnableCaller,
+		TimeFormat:   time.RFC3339Nano,
+		EnableColor:  config.EnableColor,
 	}
 }
 
-// Logger returns a Logger middleware with default config
-func Logger() HandlerFunc {
-	return LoggerWithConfig(DefaultLoggerConfig())
+// RequestLogger returns a request Logger middleware with default config
+func RequestLogger() HandlerFunc {
+	return RequestLoggerWithConfig(DefaultRequestLoggerConfig())
 }
 
-// LoggerWithConfig returns a Logger middleware with custom config
-func LoggerWithConfig(config LoggerConfig) HandlerFunc {
+// RequestLoggerWithConfig returns a request Logger middleware with custom config
+func RequestLoggerWithConfig(config RequestLoggerConfig) HandlerFunc {
 	if config.Output == nil {
 		config.Output = os.Stdout
 	}
 	if config.TimeFormat == "" {
-		config.TimeFormat = "2006/01/02 - 15:04:05"
-	}
-	if config.Format == "" {
-		config.Format = "[RUE] %s | %3d | %13v | %15s | %-7s %s\n"
+		config.TimeFormat = time.RFC3339Nano
 	}
 
 	skipPaths := make(map[string]bool)
@@ -73,15 +79,87 @@ func LoggerWithConfig(config LoggerConfig) HandlerFunc {
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
 
-		fmt.Fprintf(config.Output, config.Format,
-			start.Format(config.TimeFormat),
-			statusCode,
-			latency,
-			clientIP,
-			method,
-			path,
-		)
+		// Determine log level based on status code
+		level := InfoLevel
+		if statusCode >= 500 {
+			level = ErrorLevel
+		} else if statusCode >= 400 {
+			level = WarnLevel
+		}
+
+		// Skip if below configured level
+		if level < config.Level {
+			return
+		}
+
+		entry := LogEntry{
+			Timestamp: start.UTC().Format(config.TimeFormat),
+			Level:     level.String(),
+			Method:    method,
+			Path:      path,
+			Status:    statusCode,
+			Latency:   latency.String(),
+			ClientIP:  clientIP,
+		}
+
+		// Add caller info for errors
+		if config.EnableCaller && level >= ErrorLevel {
+			if len(c.Errors) > 0 {
+				entry.Error = c.Errors[len(c.Errors)-1].Error()
+			}
+		}
+
+		if config.Format == JSONFormat {
+			writeJSONLog(config.Output, &entry)
+		} else {
+			writeTextLog(config.Output, &entry, config.EnableColor, level)
+		}
 	}
+}
+
+func writeJSONLog(w io.Writer, entry *LogEntry) {
+	data, err := sonic.Marshal(entry)
+	if err != nil {
+		return
+	}
+	w.Write(data)
+	w.Write([]byte("\n"))
+}
+
+func writeTextLog(w io.Writer, entry *LogEntry, enableColor bool, level LogLevel) {
+	var buf strings.Builder
+
+	// Color prefix
+	if enableColor {
+		buf.WriteString(level.Color())
+	}
+
+	// Parse timestamp
+	t, _ := time.Parse(time.RFC3339Nano, entry.Timestamp)
+
+	// Format: [RUE] 2006/01/02 - 15:04:05 | 200 |     1.234ms | 192.168.1.1 | GET /path
+	buf.WriteString("[RUE] ")
+	buf.WriteString(t.Local().Format("2006/01/02 - 15:04:05"))
+	buf.WriteString(fmt.Sprintf(" | %3d | %13s | %15s | %-7s %s",
+		entry.Status,
+		entry.Latency,
+		entry.ClientIP,
+		entry.Method,
+		entry.Path,
+	))
+
+	if entry.Error != "" {
+		buf.WriteString(" | error=")
+		buf.WriteString(entry.Error)
+	}
+
+	// Reset color
+	if enableColor {
+		buf.WriteString("\033[0m")
+	}
+
+	buf.WriteString("\n")
+	w.Write([]byte(buf.String()))
 }
 
 // RecoveryConfig defines the config for Recovery middleware
