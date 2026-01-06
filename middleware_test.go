@@ -16,14 +16,14 @@ import (
 
 func TestLogger(t *testing.T) {
 	var buf bytes.Buffer
-	config := LoggerConfig{
-		Output:     &buf,
-		TimeFormat: "2006/01/02",
-		Format:     "[TEST] %s | %3d | %13v | %15s | %-7s %s\n",
+	config := RequestLoggerConfig{
+		Output:      &buf,
+		Format:      TextFormat,
+		EnableColor: false,
 	}
 
 	engine := New()
-	engine.Use(LoggerWithConfig(config))
+	engine.Use(RequestLoggerWithConfig(config))
 	engine.GET("/test", func(c *Context) {
 		c.Text(http.StatusOK, "OK")
 	})
@@ -33,7 +33,7 @@ func TestLogger(t *testing.T) {
 	engine.ServeHTTP(w, req)
 
 	output := buf.String()
-	if !strings.Contains(output, "[TEST]") {
+	if !strings.Contains(output, "[RUE]") {
 		t.Errorf("Logger output should contain prefix, got: %s", output)
 	}
 	if !strings.Contains(output, "200") {
@@ -49,13 +49,13 @@ func TestLogger(t *testing.T) {
 
 func TestLogger_SkipPaths(t *testing.T) {
 	var buf bytes.Buffer
-	config := LoggerConfig{
+	config := RequestLoggerConfig{
 		Output:    &buf,
 		SkipPaths: []string{"/health"},
 	}
 
 	engine := New()
-	engine.Use(LoggerWithConfig(config))
+	engine.Use(RequestLoggerWithConfig(config))
 	engine.GET("/health", func(c *Context) {
 		c.Text(http.StatusOK, "OK")
 	})

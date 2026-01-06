@@ -34,12 +34,19 @@ type Engine struct {
 
 	// Configuration
 	MaxMultipartMemory int64
+	Mode               Mode
 
 	// Extension points
 	Binder       Binder
 	Validator    Validator
 	Renderer     Renderer
 	ErrorHandler ErrorHandler
+
+	// HTML template renderer
+	htmlRenderer *HTMLRenderer
+
+	// Logger
+	Logger *Logger
 
 	// Lifecycle hooks
 	onStart    []func()
@@ -59,6 +66,7 @@ func New() *Engine {
 		},
 		router:             newRouter(),
 		MaxMultipartMemory: 32 << 20, // 32 MB
+		Mode:               GetMode(),
 	}
 	engine.RouterGroup.engine = engine
 	engine.pool.New = func() any {
@@ -68,13 +76,14 @@ func New() *Engine {
 	engine.Binder = &DefaultBinder{}
 	engine.Validator = NewValidator()
 	engine.ErrorHandler = DefaultErrorHandler
+	engine.Logger = NewLogger()
 	return engine
 }
 
 // Default creates an Engine with Logger and Recovery middleware
 func Default() *Engine {
 	engine := New()
-	engine.Use(Logger(), Recovery())
+	engine.Use(RequestLogger(), Recovery())
 	return engine
 }
 
