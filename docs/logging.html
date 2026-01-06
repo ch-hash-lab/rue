@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/rue/css/style.css">
+    <link rel="stylesheet" href="/rue/css/docs.css">
+    <link rel="stylesheet" href="/rue/css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/rue/index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/rue/index.html">Home</a></li>
+                <li><a href="/rue/docs/getting-started.html" class="active">Docs</a></li>
+                <li><a href="/rue/docs/api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar" id="sidebar"></aside>
+
+        <main class="docs-content">
+            <h1>Logging</h1>
+            <p>Rue provides a powerful structured logging system with support for multiple log levels, JSON/Text formats, and automatic caller information for error tracking.</p>
+
+            <h2 id="environment-modes">Environment Modes</h2>
+            <p>Rue supports three environment modes that automatically configure logging behavior:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Set mode before creating engine
+rue.SetMode(rue.DevMode)   // Development (default)
+rue.SetMode(rue.TestMode)  // Testing
+rue.SetMode(rue.PrdMode)   // Production
+
+// Or use environment variable
+// export RUE_MODE=prd
+
+r := rue.Default()</code></pre>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Log Level</th>
+                        <th>Format</th>
+                        <th>Color</th>
+                        <th>Caller Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>DevMode</td>
+                        <td>Debug</td>
+                        <td>Text</td>
+                        <td>Yes</td>
+                        <td>Error+</td>
+                    </tr>
+                    <tr>
+                        <td>TestMode</td>
+                        <td>Info</td>
+                        <td>Text</td>
+                        <td>No</td>
+                        <td>Error+</td>
+                    </tr>
+                    <tr>
+                        <td>PrdMode</td>
+                        <td>Info</td>
+                        <td>JSON</td>
+                        <td>No</td>
+                        <td>Error+</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 id="log-levels">Log Levels</h2>
+            <p>Rue supports six log levels:</p>
+
+            <ul>
+                <li><strong>Debug</strong> - Detailed debugging information</li>
+                <li><strong>Info</strong> - General informational messages</li>
+                <li><strong>Warn</strong> - Warning messages for potential issues</li>
+                <li><strong>Error</strong> - Error messages (includes caller info)</li>
+                <li><strong>Fatal</strong> - Fatal errors that cause program exit</li>
+                <li><strong>Stat</strong> - Statistics and metrics (includes caller info)</li>
+            </ul>
+
+            <h2 id="request-logger">Request Logger Middleware</h2>
+            <p>The request logger middleware logs HTTP requests with timing information:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Default request logger (uses mode config)
+r := rue.Default()  // Includes RequestLogger + Recovery
+
+// Or add manually
+r := rue.New()
+r.Use(rue.RequestLogger())
+
+// Custom configuration
+r.Use(rue.RequestLoggerWithConfig(rue.RequestLoggerConfig{
+    Level:        rue.InfoLevel,
+    Format:       rue.JSONFormat,
+    SkipPaths:    []string{"/health", "/metrics"},
+    EnableCaller: true,
+    EnableColor:  false,
+}))</code></pre>
+            </div>
+
+            <h3>Text Output (Development)</h3>
+            <pre><code>[RUE] 2026/01/06 - 12:30:45 | 200 |     1.234ms |   192.168.1.1 | GET     /api/users
+[RUE] 2026/01/06 - 12:30:46 | 404 |      892µs |   192.168.1.1 | GET     /api/notfound
+[RUE] 2026/01/06 - 12:30:47 | 500 |     5.123ms |   192.168.1.1 | POST    /api/error | error=database connection failed</code></pre>
+
+            <h3>JSON Output (Production)</h3>
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">json</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">{"@timestamp":"2026-01-06T12:30:45.123Z","level":"info","method":"GET","path":"/api/users","status":200,"latency":"1.234ms","client_ip":"192.168.1.1"}
+{"@timestamp":"2026-01-06T12:30:46.456Z","level":"warn","method":"GET","path":"/api/notfound","status":404,"latency":"892µs","client_ip":"192.168.1.1"}
+{"@timestamp":"2026-01-06T12:30:47.789Z","level":"error","method":"POST","path":"/api/error","status":500,"latency":"5.123ms","client_ip":"192.168.1.1","error":"database connection failed"}</code></pre>
+            </div>
+
+            <h2 id="standalone-logger">Standalone Logger</h2>
+            <p>Use the logger independently for application logging:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Create a custom logger
+logger := rue.NewLogger(
+    rue.WithLevel(rue.InfoLevel),
+    rue.WithFormat(rue.JSONFormat),
+    rue.WithOutput(os.Stdout),
+    rue.WithCaller(true),
+    rue.WithColor(false),
+)
+
+// Basic logging
+logger.Debug("debug message")
+logger.Info("info message")
+logger.Warn("warning message")
+logger.Error("error message")  // Includes caller info
+
+// Formatted logging
+logger.Infof("user %s logged in", username)
+logger.Errorf("failed to process request: %v", err)
+
+// Error with error object
+logger.ErrorWithErr("database query failed", err)
+
+// Statistics logging (always includes caller info)
+logger.Stat("CPU: 17m, MEMORY: Alloc=2.5Mi, TotalAlloc=644484.3Mi")</code></pre>
+            </div>
+
+            <h2 id="structured-logging">Structured Logging</h2>
+            <p>Add custom fields to log entries:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">logger.WithFields(rue.H{
+    "user_id":    123,
+    "action":     "login",
+    "ip":         "192.168.1.1",
+    "user_agent": "Mozilla/5.0...",
+}).Info("user logged in")
+
+// Output (JSON):
+// {"@timestamp":"2026-01-06T12:30:45.123Z","level":"info","content":"user logged in","fields":{"user_id":123,"action":"login","ip":"192.168.1.1","user_agent":"Mozilla/5.0..."}}</code></pre>
+            </div>
+
+            <h2 id="error-logging">Error Logging with Caller Info</h2>
+            <p>Error and Fatal levels automatically include caller information:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// In handler/user.go line 45
+logger.Error("database connection failed")
+
+// Text output:
+// [RUE] 2026/01/06 - 12:30:45 | ERROR | user.go:45 | handler.GetUser | database connection failed
+
+// JSON output:
+// {"@timestamp":"2026-01-06T12:30:45.123Z","level":"error","caller":"user.go:45","func":"handler.GetUser","content":"database connection failed"}</code></pre>
+            </div>
+
+            <h2 id="stat-logging">Statistics Logging</h2>
+            <p>Use Stat level for metrics and statistics:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Log system statistics
+var m runtime.MemStats
+runtime.ReadMemStats(&m)
+
+logger.Statf("CPU: %dm, MEMORY: Alloc=%dMi, TotalAlloc=%dMi, Sys=%dMi, NumGC=%d",
+    cpuUsage,
+    m.Alloc/1024/1024,
+    m.TotalAlloc/1024/1024,
+    m.Sys/1024/1024,
+    m.NumGC,
+)
+
+// Output:
+// {"@timestamp":"2026-01-06T12:30:45.123Z","level":"stat","caller":"stat/usage.go:61","content":"CPU: 17m, MEMORY: Alloc=2Mi, TotalAlloc=644484Mi, Sys=18Mi, NumGC=381259"}</code></pre>
+            </div>
+
+            <h2 id="package-level">Package-Level Logging</h2>
+            <p>Use package-level functions for quick logging:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Use default logger
+rue.LogDebug("debug message")
+rue.LogInfo("info message")
+rue.LogWarn("warning message")
+rue.LogError("error message")
+rue.LogStat("statistics message")
+
+// Formatted versions
+rue.LogInfof("processing %d items", count)
+rue.LogErrorf("failed: %v", err)
+
+// Set custom default logger
+customLogger := rue.NewLogger(rue.WithFormat(rue.JSONFormat))
+rue.SetDefaultLogger(customLogger)</code></pre>
+            </div>
+
+            <h2 id="logger-options">Logger Options</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>Description</th>
+                        <th>Default</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>WithLevel(level)</code></td>
+                        <td>Set minimum log level</td>
+                        <td>Based on mode</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithFormat(format)</code></td>
+                        <td>Set output format (Text/JSON)</td>
+                        <td>Based on mode</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithOutput(writer)</code></td>
+                        <td>Set output destination</td>
+                        <td>os.Stdout</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithCaller(bool)</code></td>
+                        <td>Enable caller info</td>
+                        <td>true</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithCallerSkip(n)</code></td>
+                        <td>Skip n stack frames</td>
+                        <td>2</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithColor(bool)</code></td>
+                        <td>Enable colored output</td>
+                        <td>Based on mode</td>
+                    </tr>
+                    <tr>
+                        <td><code>WithTimeFormat(fmt)</code></td>
+                        <td>Set time format</td>
+                        <td>RFC3339Nano</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-info">
+                <div class="callout-title">💡 Best Practice</div>
+                <p>Use <code>rue.SetMode(rue.PrdMode)</code> in production to automatically enable JSON logging with appropriate log levels.</p>
+            </div>
+
+            <nav class="docs-nav">
+                <a href="/rue/docs/templates.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Templates</span>
+                </a>
+                <a href="/rue/docs/testing.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Testing →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="/rue/js/sidebar.js"></script>
+    <script src="/rue/js/prism.js"></script>
+    <script src="/rue/js/main.js"></script>
+</body>
+</html>

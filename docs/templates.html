@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/rue/css/style.css">
+    <link rel="stylesheet" href="/rue/css/docs.css">
+    <link rel="stylesheet" href="/rue/css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/rue/index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/rue/index.html">Home</a></li>
+                <li><a href="/rue/docs/getting-started.html" class="active">Docs</a></li>
+                <li><a href="/rue/docs/api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar" id="sidebar"></aside>
+
+        <main class="docs-content">
+            <h1>HTML Templates</h1>
+            <p>Rue provides powerful HTML template loading with support for multi-level directories, custom delimiters, and embedded file systems.</p>
+
+            <h2 id="basic-usage">Basic Usage</h2>
+            <p>Load templates from a glob pattern:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.New()
+
+// Load all HTML files from templates directory
+r.LoadHTMLGlob("templates/*.html")
+
+r.GET("/", func(c *rue.Context) {
+    c.HTML(http.StatusOK, "index.html", rue.H{
+        "title": "Welcome",
+        "name":  "Rue",
+    })
+})
+
+r.Run(":8080")</code></pre>
+            </div>
+
+            <h2 id="multi-level">Multi-Level Directory Loading</h2>
+            <p>Use <code>**</code> pattern to load templates from nested directories:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Directory structure:
+// templates/
+// ├── layouts/
+// │   ├── base.html
+// │   └── admin.html
+// ├── pages/
+// │   ├── home.html
+// │   └── about.html
+// └── partials/
+//     ├── header.html
+//     └── footer.html
+
+// Load all HTML files recursively
+r.LoadHTMLGlob("templates/**/*.html")
+
+// Templates are named by relative path:
+// - "layouts/base.html"
+// - "pages/home.html"
+// - "partials/header.html"
+
+r.GET("/", func(c *rue.Context) {
+    c.HTML(http.StatusOK, "pages/home.html", rue.H{
+        "title": "Home",
+    })
+})</code></pre>
+            </div>
+
+            <h2 id="load-files">Loading Specific Files</h2>
+            <p>Load specific template files:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.LoadHTMLFiles(
+    "templates/index.html",
+    "templates/about.html",
+    "templates/contact.html",
+)
+
+// Templates are named by filename only:
+// - "index.html"
+// - "about.html"
+// - "contact.html"</code></pre>
+            </div>
+
+            <h2 id="embed-fs">Embedded File System</h2>
+            <p>Load templates from <code>embed.FS</code> for single-binary deployment:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">import "embed"
+
+//go:embed templates/*
+var templateFS embed.FS
+
+func main() {
+    r := rue.New()
+
+    // Load from embedded FS with glob patterns
+    r.LoadHTMLFS(templateFS, "templates/*.html")
+
+    // Or load recursively
+    r.LoadHTMLFSRecursive(templateFS, "templates", "*.html")
+
+    r.Run(":8080")
+}</code></pre>
+            </div>
+
+            <h2 id="custom-delims">Custom Delimiters</h2>
+            <p>Change template delimiters to avoid conflicts with frontend frameworks:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r := rue.New()
+
+// Use [[ ]] instead of {{ }}
+r.Delims("[[", "]]")
+r.LoadHTMLGlob("templates/*.html")
+
+// In template:
+// &lt;h1&gt;[[ .title ]]&lt;/h1&gt;</code></pre>
+            </div>
+
+            <h2 id="func-map">Template Functions</h2>
+            <p>Add custom functions to templates:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">import "html/template"
+
+r := rue.New()
+
+// Set custom functions before loading templates
+r.SetFuncMap(template.FuncMap{
+    "formatDate": func(t time.Time) string {
+        return t.Format("2006-01-02")
+    },
+    "add": func(a, b int) int {
+        return a + b
+    },
+    "multiply": func(a, b int) int {
+        return a * b
+    },
+})
+
+r.LoadHTMLGlob("templates/*.html")
+
+// In template:
+// &lt;p&gt;Date: {{ formatDate .createdAt }}&lt;/p&gt;
+// &lt;p&gt;Total: {{ multiply .price .quantity }}&lt;/p&gt;</code></pre>
+            </div>
+
+            <h2 id="default-funcs">Built-in Template Functions</h2>
+            <p>Rue provides common template functions via <code>DefaultFuncMap</code>:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>Description</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>safe</code></td>
+                        <td>Mark string as safe HTML</td>
+                        <td><code>{{ safe .html }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>safeJS</code></td>
+                        <td>Mark string as safe JavaScript</td>
+                        <td><code>{{ safeJS .script }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>safeCSS</code></td>
+                        <td>Mark string as safe CSS</td>
+                        <td><code>{{ safeCSS .style }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>safeURL</code></td>
+                        <td>Mark string as safe URL</td>
+                        <td><code>{{ safeURL .link }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>upper</code></td>
+                        <td>Convert to uppercase</td>
+                        <td><code>{{ upper .name }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>lower</code></td>
+                        <td>Convert to lowercase</td>
+                        <td><code>{{ lower .name }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>title</code></td>
+                        <td>Title case</td>
+                        <td><code>{{ title .name }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>trim</code></td>
+                        <td>Trim whitespace</td>
+                        <td><code>{{ trim .text }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>join</code></td>
+                        <td>Join slice with separator</td>
+                        <td><code>{{ join .items ", " }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>split</code></td>
+                        <td>Split string</td>
+                        <td><code>{{ split .csv "," }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>contains</code></td>
+                        <td>Check substring</td>
+                        <td><code>{{ if contains .text "error" }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>hasPrefix</code></td>
+                        <td>Check prefix</td>
+                        <td><code>{{ if hasPrefix .url "https" }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>hasSuffix</code></td>
+                        <td>Check suffix</td>
+                        <td><code>{{ if hasSuffix .file ".html" }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>replace</code></td>
+                        <td>Replace all occurrences</td>
+                        <td><code>{{ replace .text "old" "new" }}</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Use default functions
+r.SetFuncMap(rue.DefaultFuncMap)
+r.LoadHTMLGlob("templates/*.html")</code></pre>
+            </div>
+
+            <h2 id="rendering">Rendering Templates</h2>
+            <p>Render templates in handlers:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">r.GET("/users/:id", func(c *rue.Context) {
+    user := getUser(c.Param("id"))
+
+    c.HTML(http.StatusOK, "user.html", rue.H{
+        "title": "User Profile",
+        "user":  user,
+        "now":   time.Now(),
+    })
+})
+
+// With nested templates (multi-level loading)
+r.GET("/admin/dashboard", func(c *rue.Context) {
+    c.HTML(http.StatusOK, "admin/dashboard.html", rue.H{
+        "stats": getStats(),
+    })
+})</code></pre>
+            </div>
+
+            <h2 id="custom-template">Custom Template</h2>
+            <p>Set a pre-configured template:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">import "html/template"
+
+// Create custom template
+tmpl := template.Must(template.New("").
+    Delims("[[", "]]").
+    Funcs(template.FuncMap{
+        "custom": myCustomFunc,
+    }).
+    ParseGlob("templates/*.html"))
+
+r := rue.New()
+r.SetHTMLTemplate(tmpl)
+
+// Get current template
+currentTmpl := r.GetHTMLTemplate()</code></pre>
+            </div>
+
+            <h2 id="example">Complete Example</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">package main
+
+import (
+    "html/template"
+    "net/http"
+    "time"
+
+    "github.com/ch-hash-lab/rue"
+)
+
+func main() {
+    r := rue.Default()
+
+    // Custom functions
+    r.SetFuncMap(template.FuncMap{
+        "formatDate": func(t time.Time) string {
+            return t.Format("Jan 02, 2006")
+        },
+        "year": func() int {
+            return time.Now().Year()
+        },
+    })
+
+    // Load templates recursively
+    r.LoadHTMLGlob("templates/**/*.html")
+
+    r.GET("/", func(c *rue.Context) {
+        c.HTML(http.StatusOK, "pages/home.html", rue.H{
+            "title":   "Welcome to Rue",
+            "message": "Fast and elegant Go web framework",
+        })
+    })
+
+    r.GET("/blog/:slug", func(c *rue.Context) {
+        post := getPost(c.Param("slug"))
+        c.HTML(http.StatusOK, "pages/blog/post.html", rue.H{
+            "title": post.Title,
+            "post":  post,
+        })
+    })
+
+    r.Run(":8080")
+}</code></pre>
+            </div>
+
+            <p>Template file <code>templates/pages/home.html</code>:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">html</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;{{ .title }}&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    {{ template "partials/header.html" . }}
+
+    &lt;main&gt;
+        &lt;h1&gt;{{ .title }}&lt;/h1&gt;
+        &lt;p&gt;{{ .message }}&lt;/p&gt;
+    &lt;/main&gt;
+
+    {{ template "partials/footer.html" . }}
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+            </div>
+
+            <div class="callout callout-info">
+                <div class="callout-title">💡 Tip</div>
+                <p>When using multi-level directory loading with <code>**</code>, templates are named by their relative path (e.g., <code>pages/home.html</code>), making it easy to organize large template collections.</p>
+            </div>
+
+            <nav class="docs-nav">
+                <a href="/rue/docs/validation.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Validation</span>
+                </a>
+                <a href="/rue/docs/logging.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Logging →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="/rue/js/sidebar.js"></script>
+    <script src="/rue/js/prism.js"></script>
+    <script src="/rue/js/main.js"></script>
+</body>
+</html>

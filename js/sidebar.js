@@ -16,6 +16,8 @@ const sidebarHTML = `
         <li><a href="/rue/docs/middleware.html">Middleware</a></li>
         <li><a href="/rue/docs/binding.html">Data Binding</a></li>
         <li><a href="/rue/docs/validation.html">Validation</a></li>
+        <li><a href="/rue/docs/templates.html">Templates</a></li>
+        <li><a href="/rue/docs/logging.html">Logging</a></li>
     </ul>
 </div>
 <div class="sidebar-section">
