@@ -6,6 +6,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // HandlerFunc defines the handler function type
@@ -48,6 +49,10 @@ type Engine struct {
 	// Logger
 	Logger *Logger
 
+	// Stats reporter
+	stats       *statsReporter
+	statsConfig StatsConfig
+
 	// Lifecycle hooks
 	onStart    []func()
 	onShutdown []func()
@@ -67,6 +72,7 @@ func New() *Engine {
 		router:             newRouter(),
 		MaxMultipartMemory: 32 << 20, // 32 MB
 		Mode:               GetMode(),
+		statsConfig:        DefaultStatsConfig(),
 	}
 	engine.RouterGroup.engine = engine
 	engine.pool.New = func() any {
@@ -142,6 +148,8 @@ func (e *Engine) Run(addr string) error {
 		Addr:    addr,
 		Handler: e,
 	}
+	// Start stats reporter
+	e.startStats()
 	// Call onStart hooks
 	for _, hook := range e.onStart {
 		hook()
@@ -155,6 +163,8 @@ func (e *Engine) RunTLS(addr, certFile, keyFile string) error {
 		Addr:    addr,
 		Handler: e,
 	}
+	// Start stats reporter
+	e.startStats()
 	// Call onStart hooks
 	for _, hook := range e.onStart {
 		hook()
@@ -164,6 +174,8 @@ func (e *Engine) RunTLS(addr, certFile, keyFile string) error {
 
 // Shutdown gracefully shuts down the server
 func (e *Engine) Shutdown(ctx context.Context) error {
+	// Stop stats reporter
+	e.stopStats()
 	// Call onShutdown hooks
 	for _, hook := range e.onShutdown {
 		hook()
@@ -172,6 +184,39 @@ func (e *Engine) Shutdown(ctx context.Context) error {
 		return e.server.Shutdown(ctx)
 	}
 	return nil
+}
+
+// startStats starts the stats reporter
+func (e *Engine) startStats() {
+	if e.statsConfig.Enabled {
+		e.stats = newStatsReporter(e.statsConfig, e.Logger)
+		e.stats.start()
+	}
+}
+
+// stopStats stops the stats reporter
+func (e *Engine) stopStats() {
+	if e.stats != nil {
+		e.stats.stop()
+	}
+}
+
+// SetStatsConfig sets the stats configuration
+func (e *Engine) SetStatsConfig(config StatsConfig) *Engine {
+	e.statsConfig = config
+	return e
+}
+
+// DisableStats disables system statistics reporting
+func (e *Engine) DisableStats() *Engine {
+	e.statsConfig.Enabled = false
+	return e
+}
+
+// SetStatsInterval sets the interval for stats reporting
+func (e *Engine) SetStatsInterval(interval time.Duration) *Engine {
+	e.statsConfig.Interval = interval
+	return e
 }
 
 // OnStart registers a hook to be called when the server starts
