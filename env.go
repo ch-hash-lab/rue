@@ -11,8 +11,6 @@ type Mode string
 const (
 	// DevMode is development mode with verbose logging
 	DevMode Mode = "dev"
-	// TestMode is testing mode
-	TestMode Mode = "test"
 	// PrdMode is production mode with optimized settings
 	PrdMode Mode = "prd"
 )
@@ -22,9 +20,26 @@ const (
 	EnvRueMode = "RUE_MODE"
 )
 
+// ModeConfig holds the configuration for a mode
+type ModeConfig struct {
+	LogLevel     LogLevel
+	LogFormat    LogFormat
+	EnableCaller bool
+	EnableColor  bool
+}
+
+// Global configuration state
 var (
-	rueMode     = DevMode
-	rueModeLock sync.RWMutex
+	globalConfig = &struct {
+		sync.RWMutex
+		mode         Mode
+		logLevel     *LogLevel
+		logFormat    *LogFormat
+		enableCaller *bool
+		enableColor  *bool
+	}{
+		mode: DevMode,
+	}
 )
 
 func init() {
@@ -34,24 +49,67 @@ func init() {
 	}
 }
 
-// SetMode sets the running mode of the framework
-func SetMode(mode Mode) {
-	rueModeLock.Lock()
-	defer rueModeLock.Unlock()
+// ModeBuilder provides fluent API for configuring mode settings
+type ModeBuilder struct{}
+
+// SetMode sets the running mode and returns a builder for chaining
+func SetMode(mode Mode) *ModeBuilder {
+	globalConfig.Lock()
+	defer globalConfig.Unlock()
 
 	switch mode {
-	case DevMode, TestMode, PrdMode:
-		rueMode = mode
+	case DevMode, PrdMode:
+		globalConfig.mode = mode
 	default:
-		rueMode = DevMode
+		globalConfig.mode = DevMode
 	}
+
+	// Reset custom overrides when mode changes
+	globalConfig.logLevel = nil
+	globalConfig.logFormat = nil
+	globalConfig.enableCaller = nil
+	globalConfig.enableColor = nil
+
+	return &ModeBuilder{}
+}
+
+// LogLevel sets a custom log level (overrides mode default)
+func (b *ModeBuilder) LogLevel(level LogLevel) *ModeBuilder {
+	globalConfig.Lock()
+	defer globalConfig.Unlock()
+	globalConfig.logLevel = &level
+	return b
+}
+
+// Format sets a custom log format (overrides mode default)
+func (b *ModeBuilder) Format(format LogFormat) *ModeBuilder {
+	globalConfig.Lock()
+	defer globalConfig.Unlock()
+	globalConfig.logFormat = &format
+	return b
+}
+
+// EnableColor sets whether to enable colored output (overrides mode default)
+func (b *ModeBuilder) EnableColor(enable bool) *ModeBuilder {
+	globalConfig.Lock()
+	defer globalConfig.Unlock()
+	globalConfig.enableColor = &enable
+	return b
+}
+
+// EnableCaller sets whether to enable caller info (overrides mode default)
+func (b *ModeBuilder) EnableCaller(enable bool) *ModeBuilder {
+	globalConfig.Lock()
+	defer globalConfig.Unlock()
+	globalConfig.enableCaller = &enable
+	return b
 }
 
 // GetMode returns the current running mode
 func GetMode() Mode {
-	rueModeLock.RLock()
-	defer rueModeLock.RUnlock()
-	return rueMode
+	globalConfig.RLock()
+	defer globalConfig.RUnlock()
+	return globalConfig.mode
 }
 
 // IsDevMode returns true if running in development mode
@@ -59,40 +117,20 @@ func IsDevMode() bool {
 	return GetMode() == DevMode
 }
 
-// IsTestMode returns true if running in test mode
-func IsTestMode() bool {
-	return GetMode() == TestMode
-}
-
 // IsPrdMode returns true if running in production mode
 func IsPrdMode() bool {
 	return GetMode() == PrdMode
 }
 
-// ModeConfig returns default configuration based on current mode
-type ModeConfig struct {
-	LogLevel     LogLevel
-	LogFormat    LogFormat
-	EnableCaller bool
-	EnableColor  bool
-}
-
-// GetModeConfig returns the default configuration for the current mode
-func GetModeConfig() ModeConfig {
-	switch GetMode() {
+// getDefaultConfig returns the default configuration for a mode
+func getDefaultConfig(mode Mode) ModeConfig {
+	switch mode {
 	case PrdMode:
 		return ModeConfig{
 			LogLevel:     InfoLevel,
 			LogFormat:    JSONFormat,
 			EnableCaller: true,
-			EnableColor:  false,
-		}
-	case TestMode:
-		return ModeConfig{
-			LogLevel:     InfoLevel,
-			LogFormat:    TextFormat,
-			EnableCaller: true,
-			EnableColor:  false,
+			EnableColor:  true,
 		}
 	default: // DevMode
 		return ModeConfig{
@@ -102,4 +140,29 @@ func GetModeConfig() ModeConfig {
 			EnableColor:  true,
 		}
 	}
+}
+
+// GetModeConfig returns the effective configuration (mode defaults + overrides)
+func GetModeConfig() ModeConfig {
+	globalConfig.RLock()
+	defer globalConfig.RUnlock()
+
+	// Start with mode defaults
+	config := getDefaultConfig(globalConfig.mode)
+
+	// Apply overrides
+	if globalConfig.logLevel != nil {
+		config.LogLevel = *globalConfig.logLevel
+	}
+	if globalConfig.logFormat != nil {
+		config.LogFormat = *globalConfig.logFormat
+	}
+	if globalConfig.enableCaller != nil {
+		config.EnableCaller = *globalConfig.enableCaller
+	}
+	if globalConfig.enableColor != nil {
+		config.EnableColor = *globalConfig.enableColor
+	}
+
+	return config
 }
