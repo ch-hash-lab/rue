@@ -229,20 +229,46 @@ logger.Error("database connection failed")
 // {"@timestamp":"2026-01-06T12:30:45.123Z","level":"error","caller":"user.go:45","func":"handler.GetUser","content":"database connection failed"}</code></pre>
             </div>
 
-            <h2 id="stat-logging">Statistics Logging</h2>
-            <p>Use Stat level for metrics and system statistics:</p>
+            <h2 id="system-stats">System Statistics</h2>
+            <p>Rue automatically reports system statistics (memory, GC, goroutines) at regular intervals. This is enabled by default with a 1-minute interval.</p>
 
             <div class="code-block">
                 <div class="code-block-header">
                     <span class="code-block-lang">go</span>
                     <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
                 </div>
-                <pre><code class="language-go">// Log system statistics
-logger.Statf("CPU: %dm, MEMORY: Alloc=%dMi, TotalAlloc=%dMi, Sys=%dMi, NumGC=%d",
-    cpuUsage, allocMi, totalAllocMi, sysMi, numGC)
+                <pre><code class="language-go">// Default: enabled, 1 minute interval
+r := rue.Default()
+r.Run(":8080")
 
-// Output:
-// {"@timestamp":"2026-01-06T12:30:45.123Z","level":"stat","caller":"stat/usage.go:61","content":"CPU: 17m, MEMORY: Alloc=2Mi, TotalAlloc=644484Mi, Sys=18Mi, NumGC=381259"}</code></pre>
+// Custom interval
+r.SetStatsInterval(30 * time.Second)
+
+// Disable stats reporting
+r.DisableStats()
+
+// Full configuration
+r.SetStatsConfig(rue.StatsConfig{
+    Interval: 2 * time.Minute,
+    Enabled:  true,
+})</code></pre>
+            </div>
+
+            <h3>Text Output</h3>
+            <pre><code>[RUE] 2026/01/07 - 12:30:45 | STAT | stats.go:85 | MEMORY: Alloc=2.5Mi, TotalAlloc=10.2Mi, Sys=18.1Mi, NumGC=5, Goroutines=12</code></pre>
+
+            <h3>JSON Output</h3>
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">json</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-json">{"@timestamp":"2026-01-07T12:30:45.123Z","level":"stat","caller":"stats.go:85","content":"MEMORY: Alloc=2.5Mi, TotalAlloc=10.2Mi, Sys=18.1Mi, NumGC=5, Goroutines=12"}</code></pre>
+            </div>
+
+            <div class="callout callout-info">
+                <div class="callout-title">💡 Note</div>
+                <p>Stats output follows your logging configuration (format, color). The stats reporter starts automatically when you call <code>Run()</code> or <code>RunTLS()</code> and stops on <code>Shutdown()</code>.</p>
             </div>
 
             <h2 id="package-level">Package-Level Logging</h2>
