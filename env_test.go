@@ -11,7 +11,6 @@ func TestSetMode(t *testing.T) {
 		expected Mode
 	}{
 		{"DevMode", DevMode, DevMode},
-		{"TestMode", TestMode, TestMode},
 		{"PrdMode", PrdMode, PrdMode},
 		{"Invalid mode defaults to DevMode", "invalid", DevMode},
 	}
@@ -38,18 +37,6 @@ func TestIsDevMode(t *testing.T) {
 	}
 }
 
-func TestIsTestMode(t *testing.T) {
-	SetMode(TestMode)
-	if !IsTestMode() {
-		t.Error("IsTestMode() should return true when mode is TestMode")
-	}
-
-	SetMode(DevMode)
-	if IsTestMode() {
-		t.Error("IsTestMode() should return false when mode is DevMode")
-	}
-}
-
 func TestIsPrdMode(t *testing.T) {
 	SetMode(PrdMode)
 	if !IsPrdMode() {
@@ -68,10 +55,10 @@ func TestGetModeConfig(t *testing.T) {
 		mode           Mode
 		expectedLevel  LogLevel
 		expectedFormat LogFormat
+		expectedColor  bool
 	}{
-		{"DevMode config", DevMode, DebugLevel, TextFormat},
-		{"TestMode config", TestMode, InfoLevel, TextFormat},
-		{"PrdMode config", PrdMode, InfoLevel, JSONFormat},
+		{"DevMode config", DevMode, DebugLevel, TextFormat, true},
+		{"PrdMode config", PrdMode, InfoLevel, JSONFormat, true},
 	}
 
 	for _, tt := range tests {
@@ -85,7 +72,56 @@ func TestGetModeConfig(t *testing.T) {
 			if config.LogFormat != tt.expectedFormat {
 				t.Errorf("LogFormat = %v, want %v", config.LogFormat, tt.expectedFormat)
 			}
+			if config.EnableColor != tt.expectedColor {
+				t.Errorf("EnableColor = %v, want %v", config.EnableColor, tt.expectedColor)
+			}
 		})
+	}
+
+	// Reset to default
+	SetMode(DevMode)
+}
+
+func TestModeBuilderChaining(t *testing.T) {
+	// Test chaining configuration
+	SetMode(PrdMode).
+		LogLevel(DebugLevel).
+		Format(TextFormat).
+		EnableColor(false).
+		EnableCaller(false)
+
+	config := GetModeConfig()
+
+	if config.LogLevel != DebugLevel {
+		t.Errorf("LogLevel = %v, want %v", config.LogLevel, DebugLevel)
+	}
+	if config.LogFormat != TextFormat {
+		t.Errorf("LogFormat = %v, want %v", config.LogFormat, TextFormat)
+	}
+	if config.EnableColor != false {
+		t.Errorf("EnableColor = %v, want %v", config.EnableColor, false)
+	}
+	if config.EnableCaller != false {
+		t.Errorf("EnableCaller = %v, want %v", config.EnableCaller, false)
+	}
+
+	// Reset to default
+	SetMode(DevMode)
+}
+
+func TestModeOverrideReset(t *testing.T) {
+	// Set overrides
+	SetMode(DevMode).LogLevel(ErrorLevel)
+	config := GetModeConfig()
+	if config.LogLevel != ErrorLevel {
+		t.Errorf("LogLevel = %v, want %v", config.LogLevel, ErrorLevel)
+	}
+
+	// Change mode should reset overrides
+	SetMode(PrdMode)
+	config = GetModeConfig()
+	if config.LogLevel != InfoLevel {
+		t.Errorf("After mode change, LogLevel = %v, want %v (PrdMode default)", config.LogLevel, InfoLevel)
 	}
 
 	// Reset to default
