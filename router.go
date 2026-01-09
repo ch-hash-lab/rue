@@ -228,6 +228,8 @@ func (n *node) insertChild(path, fullPath string, handlers HandlersChain) {
 					priority: 1,
 					fullPath: fullPath,
 				}
+				// Set indices for the first character of the remaining path
+				n.indices = string([]byte{path[0]})
 				n.children = append(n.children, child)
 				n = child
 				continue
@@ -331,8 +333,23 @@ walk:
 					if end < len(path) {
 						if len(n.children) > 0 {
 							path = path[end:]
-							n = n.children[0]
-							continue walk
+							// Find the correct child node by matching the first character
+							// against the indices (similar to static node matching)
+							if len(n.indices) > 0 {
+								idxc := path[0]
+								for i, c := range []byte(n.indices) {
+									if c == idxc {
+										n = n.children[i]
+										continue walk
+									}
+								}
+							}
+							// If no matching index found, try the first child (for backward compatibility)
+							// This handles cases where there's only one child without indices
+							if len(n.children) == 1 && len(n.indices) == 0 {
+								n = n.children[0]
+								continue walk
+							}
 						}
 						return nil, "", false
 					}
