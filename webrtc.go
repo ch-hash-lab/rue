@@ -1,6 +1,8 @@
 package rue
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"sync"
 )
@@ -341,15 +343,14 @@ func (c *WebSocketConn) Get(key string) (any, bool) {
 	return val, ok
 }
 
-// Add data field to WebSocketConn (need to update websocket.go)
-var (
-	peerIDCounter int
-	peerIDMu      sync.Mutex
-)
-
+// generatePeerID generates a cryptographically secure random peer ID
 func generatePeerID() string {
-	peerIDMu.Lock()
-	defer peerIDMu.Unlock()
-	peerIDCounter++
-	return "peer-" + string(rune('0'+peerIDCounter%10)) + string(rune('0'+peerIDCounter/10%10))
+	// Generate 16 bytes of random data
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to time-based ID if crypto/rand fails (extremely rare)
+		// This should never happen in practice on modern systems
+		return "peer-fallback"
+	}
+	return "peer-" + base64.RawURLEncoding.EncodeToString(b)
 }

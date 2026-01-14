@@ -398,12 +398,54 @@ func parseValue(value string) any {
 
 // Executor executes GraphQL operations
 type Executor struct {
-	schema *Schema
+	schema        *Schema
+	maxDepth      int
+	maxComplexity int
 }
 
 // NewExecutor creates a new executor
 func NewExecutor(schema *Schema) *Executor {
-	return &Executor{schema: schema}
+	return &Executor{
+		schema:        schema,
+		maxDepth:      10,
+		maxComplexity: 100,
+	}
+}
+
+// NewExecutorWithLimits creates a new executor with custom limits
+func NewExecutorWithLimits(schema *Schema, maxDepth, maxComplexity int) *Executor {
+	return &Executor{
+		schema:        schema,
+		maxDepth:      maxDepth,
+		maxComplexity: maxComplexity,
+	}
+}
+
+// calculateDepth calculates the depth of a selection set
+func calculateDepth(selections []Selection) int {
+	if len(selections) == 0 {
+		return 0
+	}
+	maxChildDepth := 0
+	for _, sel := range selections {
+		childDepth := calculateDepth(sel.Selections)
+		if childDepth > maxChildDepth {
+			maxChildDepth = childDepth
+		}
+	}
+	return 1 + maxChildDepth
+}
+
+// calculateComplexity calculates the complexity of a query
+func calculateComplexity(selections []Selection) int {
+	complexity := 0
+	for _, sel := range selections {
+		// Each field adds 1 to complexity
+		complexity++
+		// Nested selections add their complexity
+		complexity += calculateComplexity(sel.Selections)
+	}
+	return complexity
 }
 
 // Execute executes a GraphQL request
@@ -413,6 +455,30 @@ func (e *Executor) Execute(ctx *Context, req *GraphQLRequest) *GraphQLResponse {
 	if err != nil {
 		return &GraphQLResponse{
 			Errors: []GraphQLError{{Message: err.Error()}},
+		}
+	}
+
+	// Check query depth limit
+	if e.maxDepth > 0 {
+		depth := calculateDepth(op.Selections)
+		if depth > e.maxDepth {
+			return &GraphQLResponse{
+				Errors: []GraphQLError{{
+					Message: fmt.Sprintf("query exceeds maximum depth of %d (actual: %d)", e.maxDepth, depth),
+				}},
+			}
+		}
+	}
+
+	// Check query complexity limit
+	if e.maxComplexity > 0 {
+		complexity := calculateComplexity(op.Selections)
+		if complexity > e.maxComplexity {
+			return &GraphQLResponse{
+				Errors: []GraphQLError{{
+					Message: fmt.Sprintf("query exceeds maximum complexity of %d (actual: %d)", e.maxComplexity, complexity),
+				}},
+			}
 		}
 	}
 
@@ -621,8 +687,10 @@ func getFieldValue(source any, fieldName string) any {
 
 // GraphQLConfig defines GraphQL handler configuration
 type GraphQLConfig struct {
-	Schema     *Schema
-	Playground bool
+	Schema        *Schema
+	Playground    bool
+	MaxDepth      int // Maximum query depth (default: 10, 0 = unlimited)
+	MaxComplexity int // Maximum query complexity (default: 100, 0 = unlimited)
 }
 
 // GraphQL returns a GraphQL handler
@@ -635,7 +703,17 @@ func GraphQL(schema *Schema) HandlerFunc {
 
 // GraphQLWithConfig returns a GraphQL handler with custom config
 func GraphQLWithConfig(config GraphQLConfig) HandlerFunc {
-	executor := NewExecutor(config.Schema)
+	// Set defaults
+	maxDepth := config.MaxDepth
+	if maxDepth == 0 {
+		maxDepth = 10
+	}
+	maxComplexity := config.MaxComplexity
+	if maxComplexity == 0 {
+		maxComplexity = 100
+	}
+
+	executor := NewExecutorWithLimits(config.Schema, maxDepth, maxComplexity)
 
 	return func(c *Context) {
 		// Serve playground for GET requests

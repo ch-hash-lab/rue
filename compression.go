@@ -46,18 +46,41 @@ var gzipWriterPool = sync.Pool{
 // gzipResponseWriter wraps ResponseWriter with gzip compression
 type gzipResponseWriter struct {
 	ResponseWriter
-	gzipWriter *gzip.Writer
-	minLength  int
-	written    bool
+	gzipWriter     *gzip.Writer
+	minLength      int
+	buf            []byte
+	compressStarted bool
+	skipCompress   bool
 }
 
 func (w *gzipResponseWriter) Write(data []byte) (int, error) {
-	if !w.written {
-		w.written = true
+	// If compression is skipped, write directly
+	if w.skipCompress {
+		return w.ResponseWriter.Write(data)
+	}
+
+	// If compression already started, write to gzip writer
+	if w.compressStarted {
+		return w.gzipWriter.Write(data)
+	}
+
+	// Buffer data until we reach minLength
+	w.buf = append(w.buf, data...)
+
+	// Check if we've accumulated enough data to compress
+	if len(w.buf) >= w.minLength {
+		// Start compression
+		w.compressStarted = true
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Del("Content-Length")
+		// Write buffered data to gzip writer
+		if _, err := w.gzipWriter.Write(w.buf); err != nil {
+			return 0, err
+		}
+		w.buf = nil
 	}
-	return w.gzipWriter.Write(data)
+
+	return len(data), nil
 }
 
 func (w *gzipResponseWriter) WriteString(s string) (int, error) {
@@ -65,7 +88,17 @@ func (w *gzipResponseWriter) WriteString(s string) (int, error) {
 }
 
 func (w *gzipResponseWriter) Close() error {
-	return w.gzipWriter.Close()
+	// If we haven't started compression and have buffered data, write it directly
+	if !w.compressStarted && len(w.buf) > 0 {
+		w.skipCompress = true
+		w.ResponseWriter.Write(w.buf)
+		w.buf = nil
+		return nil
+	}
+	if w.compressStarted {
+		return w.gzipWriter.Close()
+	}
+	return nil
 }
 
 // Gzip returns a Gzip middleware with default config
@@ -157,18 +190,41 @@ var brotliWriterPool = sync.Pool{
 // brotliResponseWriter wraps ResponseWriter with brotli compression
 type brotliResponseWriter struct {
 	ResponseWriter
-	brotliWriter *brotli.Writer
-	minLength    int
-	written      bool
+	brotliWriter     *brotli.Writer
+	minLength        int
+	buf              []byte
+	compressStarted  bool
+	skipCompress     bool
 }
 
 func (w *brotliResponseWriter) Write(data []byte) (int, error) {
-	if !w.written {
-		w.written = true
+	// If compression is skipped, write directly
+	if w.skipCompress {
+		return w.ResponseWriter.Write(data)
+	}
+
+	// If compression already started, write to brotli writer
+	if w.compressStarted {
+		return w.brotliWriter.Write(data)
+	}
+
+	// Buffer data until we reach minLength
+	w.buf = append(w.buf, data...)
+
+	// Check if we've accumulated enough data to compress
+	if len(w.buf) >= w.minLength {
+		// Start compression
+		w.compressStarted = true
 		w.Header().Set("Content-Encoding", "br")
 		w.Header().Del("Content-Length")
+		// Write buffered data to brotli writer
+		if _, err := w.brotliWriter.Write(w.buf); err != nil {
+			return 0, err
+		}
+		w.buf = nil
 	}
-	return w.brotliWriter.Write(data)
+
+	return len(data), nil
 }
 
 func (w *brotliResponseWriter) WriteString(s string) (int, error) {
@@ -176,7 +232,17 @@ func (w *brotliResponseWriter) WriteString(s string) (int, error) {
 }
 
 func (w *brotliResponseWriter) Close() error {
-	return w.brotliWriter.Close()
+	// If we haven't started compression and have buffered data, write it directly
+	if !w.compressStarted && len(w.buf) > 0 {
+		w.skipCompress = true
+		w.ResponseWriter.Write(w.buf)
+		w.buf = nil
+		return nil
+	}
+	if w.compressStarted {
+		return w.brotliWriter.Close()
+	}
+	return nil
 }
 
 // Brotli returns a Brotli middleware with default config

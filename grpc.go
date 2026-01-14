@@ -2,6 +2,7 @@ package rue
 
 import (
 	"context"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -476,6 +477,5 @@ func GRPCRateLimiter(allowFunc func(key string) bool, keyFunc func(ctx context.C
 
 // Helper function for debug logging
 func debugPrintf(format string, args ...any) {
-	// Use standard log for now
-	// In production, this could be configurable
+	log.Printf(format, args...)
 }

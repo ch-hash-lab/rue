@@ -4,6 +4,7 @@ package rue
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -35,6 +36,7 @@ type Engine struct {
 
 	// Configuration
 	MaxMultipartMemory int64
+	MaxRequestBodySize int64 // Maximum request body size (default: 4MB)
 	Mode               Mode
 
 	// Extension points
@@ -61,6 +63,13 @@ type Engine struct {
 
 	// Server
 	server *http.Server
+
+	// Security: Trusted proxies for X-Forwarded-For header
+	trustedProxies    map[string]bool
+	trustedProxyCIDRs []*net.IPNet
+
+	// Router options
+	RedirectTrailingSlash bool
 }
 
 // New creates a new Engine instance without any middleware
@@ -71,6 +80,7 @@ func New() *Engine {
 		},
 		router:             newRouter(),
 		MaxMultipartMemory: 32 << 20, // 32 MB
+		MaxRequestBodySize: 4 << 20,  // 4 MB
 		Mode:               GetMode(),
 		statsConfig:        DefaultStatsConfig(),
 	}
@@ -129,6 +139,28 @@ func (e *Engine) handleRequest(c *Context) {
 		c.fullPath = fullPath
 		c.Next()
 	} else {
+		// Try trailing slash redirect if enabled
+		if e.RedirectTrailingSlash && path != "/" {
+			var redirectPath string
+			if path[len(path)-1] == '/' {
+				// Try without trailing slash
+				redirectPath = path[:len(path)-1]
+			} else {
+				// Try with trailing slash
+				redirectPath = path + "/"
+			}
+
+			if _, _, redirectFound := e.router.getValue(method, redirectPath, nil); redirectFound {
+				// Redirect to the correct path
+				code := http.StatusMovedPermanently // 301 for GET
+				if method != http.MethodGet {
+					code = http.StatusTemporaryRedirect // 307 for other methods
+				}
+				c.Redirect(code, redirectPath)
+				return
+			}
+		}
+
 		c.handlers = e.RouterGroup.middleware
 		c.Next()
 		if !c.IsAborted() {
@@ -237,4 +269,49 @@ func (e *Engine) OnRequest(fn func(*Context)) {
 // OnResponse registers a hook to be called after each response
 func (e *Engine) OnResponse(fn func(*Context)) {
 	e.onResponse = append(e.onResponse, fn)
+}
+
+// SetTrustedProxies sets the list of trusted proxy IP addresses or CIDR ranges.
+// Only requests from trusted proxies will have X-Forwarded-For and X-Real-IP headers trusted.
+// Example: e.SetTrustedProxies([]string{"127.0.0.1", "10.0.0.0/8", "192.168.0.0/16"})
+func (e *Engine) SetTrustedProxies(proxies []string) error {
+	e.trustedProxies = make(map[string]bool)
+	e.trustedProxyCIDRs = nil
+
+	for _, proxy := range proxies {
+		// Check if it's a CIDR range
+		if _, cidr, err := net.ParseCIDR(proxy); err == nil {
+			e.trustedProxyCIDRs = append(e.trustedProxyCIDRs, cidr)
+		} else if ip := net.ParseIP(proxy); ip != nil {
+			e.trustedProxies[ip.String()] = true
+		} else {
+			return &net.ParseError{Type: "IP address or CIDR", Text: proxy}
+		}
+	}
+	return nil
+}
+
+// isTrustedProxy checks if the given IP is a trusted proxy
+func (e *Engine) isTrustedProxy(ip string) bool {
+	// If no trusted proxies configured, don't trust any
+	if len(e.trustedProxies) == 0 && len(e.trustedProxyCIDRs) == 0 {
+		return false
+	}
+
+	// Check exact IP match
+	if e.trustedProxies[ip] {
+		return true
+	}
+
+	// Check CIDR ranges
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
+	}
+	for _, cidr := range e.trustedProxyCIDRs {
+		if cidr.Contains(parsedIP) {
+			return true
+		}
+	}
+	return false
 }

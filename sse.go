@@ -18,11 +18,11 @@ type SSEEvent struct {
 
 // SSEClient represents an SSE client connection
 type SSEClient struct {
-	c           *Context
-	flusher     http.Flusher
-	closed      bool
-	closeMu     sync.RWMutex
-	closeNotify <-chan bool
+	c       *Context
+	flusher http.Flusher
+	closed  bool
+	closeMu sync.RWMutex
+	done    chan struct{} // Used to signal keepAlive goroutine to stop
 }
 
 // SSEConfig defines SSE configuration
@@ -60,16 +60,10 @@ func SSEWithConfig(c *Context, config SSEConfig) (*SSEClient, error) {
 		return nil, fmt.Errorf("streaming not supported")
 	}
 
-	// Get close notifier if available
-	var closeNotify <-chan bool
-	if notifier, ok := c.Writer.(http.CloseNotifier); ok {
-		closeNotify = notifier.CloseNotify()
-	}
-
 	client := &SSEClient{
-		c:           c,
-		flusher:     flusher,
-		closeNotify: closeNotify,
+		c:       c,
+		flusher: flusher,
+		done:    make(chan struct{}),
 	}
 
 	// Send retry interval
@@ -153,8 +147,13 @@ func (s *SSEClient) SendComment(comment string) error {
 // Close closes the SSE connection
 func (s *SSEClient) Close() {
 	s.closeMu.Lock()
-	defer s.closeMu.Unlock()
+	if s.closed {
+		s.closeMu.Unlock()
+		return
+	}
 	s.closed = true
+	close(s.done)
+	s.closeMu.Unlock()
 }
 
 // IsClosed returns true if the connection is closed
@@ -165,8 +164,8 @@ func (s *SSEClient) IsClosed() bool {
 }
 
 // Done returns a channel that's closed when the client disconnects
-func (s *SSEClient) Done() <-chan bool {
-	return s.closeNotify
+func (s *SSEClient) Done() <-chan struct{} {
+	return s.done
 }
 
 // keepAlive sends periodic keep-alive comments
@@ -174,15 +173,25 @@ func (s *SSEClient) keepAlive(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// Use request context to detect client disconnect
+	ctx := s.c.Request.Context()
+
 	for {
 		select {
 		case <-ticker.C:
 			if s.IsClosed() {
 				return
 			}
-			s.SendComment("keep-alive")
-		case <-s.closeNotify:
+			if err := s.SendComment("keep-alive"); err != nil {
+				s.Close()
+				return
+			}
+		case <-ctx.Done():
+			// Client disconnected
 			s.Close()
+			return
+		case <-s.done:
+			// Explicitly closed
 			return
 		}
 	}

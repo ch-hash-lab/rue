@@ -161,7 +161,7 @@ c.Redirect(http.StatusFound, "/new-path")
 
 ```go
 // Logger - logs requests
-r.Use(rue.Logger())
+r.Use(rue.RequestLogger())
 r.Use(rue.LoggerWithConfig(rue.LoggerConfig{
     SkipPaths: []string{"/health"},
 }))
@@ -547,6 +547,72 @@ signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 r.Shutdown(ctx)
+```
+
+## Security Configuration
+
+### Trusted Proxies
+
+By default, Rue does not trust any proxy headers (X-Forwarded-For, X-Real-IP). If your application is behind a reverse proxy, configure trusted proxies:
+
+```go
+r := rue.New()
+
+// Trust localhost and private networks
+r.SetTrustedProxies([]string{
+    "127.0.0.1",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+})
+```
+
+### Request Body Size Limit
+
+Rue limits request body size to 4MB by default to prevent DoS attacks:
+
+```go
+r := rue.New()
+r.MaxRequestBodySize = 10 << 20  // 10MB
+```
+
+### Trailing Slash Redirect
+
+Enable automatic redirect between `/path` and `/path/`:
+
+```go
+r := rue.New()
+r.RedirectTrailingSlash = true
+```
+
+## HTML Templates
+
+```go
+r := rue.New()
+
+// Set custom template functions
+r.SetFuncMap(template.FuncMap{
+    "formatDate": func(t time.Time) string {
+        return t.Format("2006-01-02")
+    },
+})
+
+// Load templates from glob pattern
+r.LoadHTMLGlob("templates/*.html")
+
+// Or load from multiple levels with **
+r.LoadHTMLGlob("templates/**/*.html")
+
+// Or load specific files
+r.LoadHTMLFiles("templates/index.html", "templates/about.html")
+
+// Render template
+r.GET("/", func(c *rue.Context) {
+    c.HTML(http.StatusOK, "index.html", rue.H{
+        "title": "Home",
+        "user":  user,
+    })
+})
 ```
 
 ## Benchmarks

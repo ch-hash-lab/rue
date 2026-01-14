@@ -3,6 +3,7 @@ package rue
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -260,15 +261,30 @@ func CORSWithConfig(config CORSConfig) HandlerFunc {
 		allowOrigins[origin] = true
 	}
 
+	// Warn if AllowCredentials is true with wildcard origin
+	// This combination doesn't work in browsers (CORS spec violation)
+	if config.AllowCredentials && allowAll {
+		log.Println("[RUE-WARNING] CORS: AllowCredentials is true with wildcard (*) origin. " +
+			"Browsers will reject this. The actual Origin header will be echoed instead of '*'.")
+	}
+
 	return func(c *Context) {
 		origin := c.Header("Origin")
 
 		// Check if origin is allowed
 		if allowAll || allowOrigins[origin] {
-			if allowAll {
+			// When AllowCredentials is true, we MUST NOT use "*"
+			// Instead, echo the actual Origin header
+			if config.AllowCredentials && allowAll {
+				if origin != "" {
+					c.SetHeader("Access-Control-Allow-Origin", origin)
+					c.SetHeader("Vary", "Origin")
+				}
+			} else if allowAll {
 				c.SetHeader("Access-Control-Allow-Origin", "*")
 			} else {
 				c.SetHeader("Access-Control-Allow-Origin", origin)
+				c.SetHeader("Vary", "Origin")
 			}
 		}
 
@@ -303,11 +319,13 @@ func CORSWithConfig(config CORSConfig) HandlerFunc {
 
 // RateLimiterConfig defines the config for RateLimiter middleware
 type RateLimiterConfig struct {
-	Rate      float64               // Tokens per second
-	Burst     int                   // Maximum burst size
-	KeyFunc   func(*Context) string // Function to extract key (default: client IP)
-	ErrorFunc func(*Context)        // Custom error handler
-	SkipFunc  func(*Context) bool   // Skip rate limiting for certain requests
+	Rate            float64               // Tokens per second
+	Burst           int                   // Maximum burst size
+	KeyFunc         func(*Context) string // Function to extract key (default: client IP)
+	ErrorFunc       func(*Context)        // Custom error handler
+	SkipFunc        func(*Context) bool   // Skip rate limiting for certain requests
+	CleanupInterval time.Duration         // Interval to clean up expired entries (default: 10 minutes)
+	EntryTTL        time.Duration         // Time-to-live for rate limiter entries (default: 1 hour)
 }
 
 // DefaultRateLimiterConfig returns the default rate limiter config
@@ -318,6 +336,8 @@ func DefaultRateLimiterConfig() RateLimiterConfig {
 		KeyFunc: func(c *Context) string {
 			return c.ClientIP()
 		},
+		CleanupInterval: 10 * time.Minute,
+		EntryTTL:        1 * time.Hour,
 	}
 }
 
@@ -325,15 +345,18 @@ func DefaultRateLimiterConfig() RateLimiterConfig {
 type tokenBucket struct {
 	tokens     float64
 	lastUpdate time.Time
+	lastAccess time.Time
 	rate       float64
 	burst      int
 	mu         sync.Mutex
 }
 
 func newTokenBucket(rate float64, burst int) *tokenBucket {
+	now := time.Now()
 	return &tokenBucket{
 		tokens:     float64(burst),
-		lastUpdate: time.Now(),
+		lastUpdate: now,
+		lastAccess: now,
 		rate:       rate,
 		burst:      burst,
 	}
@@ -346,6 +369,7 @@ func (tb *tokenBucket) allow() bool {
 	now := time.Now()
 	elapsed := now.Sub(tb.lastUpdate).Seconds()
 	tb.lastUpdate = now
+	tb.lastAccess = now
 
 	// Add tokens based on elapsed time
 	tb.tokens += elapsed * tb.rate
@@ -363,17 +387,21 @@ func (tb *tokenBucket) allow() bool {
 
 // rateLimiterStore stores token buckets for each key
 type rateLimiterStore struct {
-	buckets map[string]*tokenBucket
-	rate    float64
-	burst   int
-	mu      sync.RWMutex
+	buckets  map[string]*tokenBucket
+	rate     float64
+	burst    int
+	ttl      time.Duration
+	mu       sync.RWMutex
+	stopChan chan struct{}
 }
 
-func newRateLimiterStore(rate float64, burst int) *rateLimiterStore {
+func newRateLimiterStore(rate float64, burst int, ttl time.Duration) *rateLimiterStore {
 	return &rateLimiterStore{
-		buckets: make(map[string]*tokenBucket),
-		rate:    rate,
-		burst:   burst,
+		buckets:  make(map[string]*tokenBucket),
+		rate:     rate,
+		burst:    burst,
+		ttl:      ttl,
+		stopChan: make(chan struct{}),
 	}
 }
 
@@ -399,6 +427,43 @@ func (s *rateLimiterStore) getBucket(key string) *tokenBucket {
 	return bucket
 }
 
+// cleanup removes expired entries from the store
+func (s *rateLimiterStore) cleanup() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	for key, bucket := range s.buckets {
+		bucket.mu.Lock()
+		if now.Sub(bucket.lastAccess) > s.ttl {
+			delete(s.buckets, key)
+		}
+		bucket.mu.Unlock()
+	}
+}
+
+// startCleanup starts the background cleanup goroutine
+func (s *rateLimiterStore) startCleanup(interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.cleanup()
+			case <-s.stopChan:
+				return
+			}
+		}
+	}()
+}
+
+// stop stops the cleanup goroutine
+func (s *rateLimiterStore) stop() {
+	close(s.stopChan)
+}
+
 // RateLimiter returns a RateLimiter middleware with default config
 func RateLimiter() HandlerFunc {
 	return RateLimiterWithConfig(DefaultRateLimiterConfig())
@@ -417,8 +482,15 @@ func RateLimiterWithConfig(config RateLimiterConfig) HandlerFunc {
 			return c.ClientIP()
 		}
 	}
+	if config.CleanupInterval <= 0 {
+		config.CleanupInterval = 10 * time.Minute
+	}
+	if config.EntryTTL <= 0 {
+		config.EntryTTL = 1 * time.Hour
+	}
 
-	store := newRateLimiterStore(config.Rate, config.Burst)
+	store := newRateLimiterStore(config.Rate, config.Burst, config.EntryTTL)
+	store.startCleanup(config.CleanupInterval)
 
 	return func(c *Context) {
 		// Skip if configured
@@ -743,9 +815,9 @@ func sign(input string, secret []byte, method string) (string, error) {
 	case "HS256":
 		mac = hmac.New(sha256.New, secret)
 	case "HS384":
-		mac = hmac.New(sha256.New, secret) // Simplified, using SHA256
+		mac = hmac.New(sha512.New384, secret)
 	case "HS512":
-		mac = hmac.New(sha256.New, secret) // Simplified, using SHA256
+		mac = hmac.New(sha512.New, secret)
 	default:
 		return "", fmt.Errorf("unsupported signing method: %s", method)
 	}

@@ -118,10 +118,7 @@ func (e *Engine) RunQUICWithConfig(addr, certFile, keyFile string, config QUICCo
 
 // AltSvc returns a middleware that adds Alt-Svc header for HTTP/3
 func AltSvc(port int) HandlerFunc {
-	altSvcValue := "h3=\":" + string(rune('0'+port/1000%10)) +
-		string(rune('0'+port/100%10)) +
-		string(rune('0'+port/10%10)) +
-		string(rune('0'+port%10)) + "\""
+	altSvcValue := "h3=\":" + itoa(port) + "\""
 
 	return func(c *Context) {
 		c.SetHeader("Alt-Svc", altSvcValue)
