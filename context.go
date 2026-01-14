@@ -104,6 +104,11 @@ func (c *Context) QueryDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// DefaultQuery is an alias for QueryDefault for compatibility
+func (c *Context) DefaultQuery(key, defaultValue string) string {
+	return c.QueryDefault(key, defaultValue)
+}
+
 // QueryArray returns a slice of strings for a given query key
 func (c *Context) QueryArray(key string) []string {
 	return c.Request.URL.Query()[key]
@@ -186,23 +191,32 @@ func (c *Context) ContentType() string {
 }
 
 // ClientIP returns the client IP address
+// Only trusts X-Forwarded-For and X-Real-IP headers if the request comes from a trusted proxy
 func (c *Context) ClientIP() string {
-	// Check X-Forwarded-For
-	if xff := c.Header("X-Forwarded-For"); xff != "" {
-		if i := strings.Index(xff, ","); i > 0 {
-			return strings.TrimSpace(xff[:i])
+	// Get remote IP
+	remoteIP := c.Request.RemoteAddr
+	if ip, _, err := net.SplitHostPort(remoteIP); err == nil {
+		remoteIP = ip
+	}
+
+	// Only trust forwarding headers if request is from a trusted proxy
+	if c.engine.isTrustedProxy(remoteIP) {
+		// Check X-Forwarded-For
+		if xff := c.Header("X-Forwarded-For"); xff != "" {
+			// Get the first (client) IP from the chain
+			if i := strings.Index(xff, ","); i > 0 {
+				return strings.TrimSpace(xff[:i])
+			}
+			return strings.TrimSpace(xff)
 		}
-		return strings.TrimSpace(xff)
+		// Check X-Real-IP
+		if xri := c.Header("X-Real-IP"); xri != "" {
+			return strings.TrimSpace(xri)
+		}
 	}
-	// Check X-Real-IP
-	if xri := c.Header("X-Real-IP"); xri != "" {
-		return xri
-	}
+
 	// Fall back to RemoteAddr
-	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
-		return ip
-	}
-	return c.Request.RemoteAddr
+	return remoteIP
 }
 
 // FullPath returns the matched route full path
@@ -235,6 +249,14 @@ func (c *Context) ShouldBind(obj any) error {
 // ShouldBindJSON binds the JSON request body to obj
 func (c *Context) ShouldBindJSON(obj any) error {
 	return c.BindJSON(obj)
+}
+
+// Validate validates the given struct using the engine's validator
+func (c *Context) Validate(obj any) error {
+	if c.engine.Validator != nil {
+		return c.engine.Validator.Validate(obj)
+	}
+	return nil
 }
 
 // ============== Response ==============

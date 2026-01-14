@@ -35,15 +35,17 @@ var (
 
 // WebSocketConn represents a WebSocket connection
 type WebSocketConn struct {
-	conn       net.Conn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
-	mu         sync.Mutex
-	closed     bool
-	closeMu    sync.RWMutex
-	pingPeriod time.Duration
-	pongWait   time.Duration
-	data       map[string]any // Custom data storage
+	conn           net.Conn
+	reader         *bufio.Reader
+	writer         *bufio.Writer
+	mu             sync.Mutex
+	closed         bool
+	closeMu        sync.RWMutex
+	pingPeriod     time.Duration
+	pongWait       time.Duration
+	data           map[string]any // Custom data storage
+	fragmentBuffer []byte         // Buffer for fragmented messages
+	fragmentOpcode int            // Opcode of the fragmented message
 }
 
 // WebSocketHandler defines callbacks for WebSocket events
@@ -63,6 +65,9 @@ type WebSocketConfig struct {
 	PingPeriod      time.Duration
 	PongWait        time.Duration
 	MaxMessageSize  int64
+	// CheckOrigin validates the Origin header to prevent Cross-Site WebSocket Hijacking (CSWSH)
+	// If nil, uses default check that compares Origin host with Host header
+	CheckOrigin func(c *Context) bool
 }
 
 // DefaultWebSocketConfig returns default WebSocket configuration
@@ -81,6 +86,47 @@ func WebSocket(handler *WebSocketHandler) HandlerFunc {
 	return WebSocketWithConfig(handler, DefaultWebSocketConfig())
 }
 
+// defaultCheckOrigin validates that the Origin header matches the Host header
+func defaultCheckOrigin(c *Context) bool {
+	origin := c.Header("Origin")
+	if origin == "" {
+		// No Origin header, allow (same-origin requests don't include Origin)
+		return true
+	}
+
+	// Parse the Origin URL
+	// Origin format: scheme://host[:port]
+	host := c.Request.Host
+
+	// Extract host from Origin (remove scheme)
+	originHost := origin
+	if idx := len("https://"); len(origin) > idx && origin[:idx] == "https://" {
+		originHost = origin[idx:]
+	} else if idx := len("http://"); len(origin) > idx && origin[:idx] == "http://" {
+		originHost = origin[idx:]
+	}
+
+	// Compare hosts (ignore port differences for same host)
+	// Strip port from both if present
+	if colonIdx := lastIndexByte(originHost, ':'); colonIdx != -1 {
+		originHost = originHost[:colonIdx]
+	}
+	if colonIdx := lastIndexByte(host, ':'); colonIdx != -1 {
+		host = host[:colonIdx]
+	}
+
+	return originHost == host
+}
+
+func lastIndexByte(s string, c byte) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == c {
+			return i
+		}
+	}
+	return -1
+}
+
 // WebSocketWithConfig returns a WebSocket handler with custom config
 func WebSocketWithConfig(handler *WebSocketHandler, config WebSocketConfig) HandlerFunc {
 	if config.ReadBufferSize == 0 {
@@ -94,6 +140,9 @@ func WebSocketWithConfig(handler *WebSocketHandler, config WebSocketConfig) Hand
 	}
 	if config.PongWait == 0 {
 		config.PongWait = 60 * time.Second
+	}
+	if config.CheckOrigin == nil {
+		config.CheckOrigin = defaultCheckOrigin
 	}
 
 	return func(c *Context) {
@@ -115,8 +164,17 @@ func WebSocketWithConfig(handler *WebSocketHandler, config WebSocketConfig) Hand
 	}
 }
 
+// ErrWebSocketOriginNotAllowed is returned when Origin validation fails
+var ErrWebSocketOriginNotAllowed = errors.New("websocket: origin not allowed")
+
 // upgradeWebSocket performs the WebSocket handshake
 func upgradeWebSocket(c *Context, config WebSocketConfig) (*WebSocketConn, error) {
+	// Check Origin header to prevent CSWSH attacks
+	if config.CheckOrigin != nil && !config.CheckOrigin(c) {
+		c.AbortWithStatus(http.StatusForbidden)
+		return nil, ErrWebSocketOriginNotAllowed
+	}
+
 	// Check headers
 	if c.Header("Upgrade") != "websocket" {
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -217,67 +275,97 @@ func (c *WebSocketConn) readLoop(handler *WebSocketHandler) {
 }
 
 // ReadMessage reads a message from the WebSocket connection
+// Supports fragmented messages as per RFC 6455
 func (c *WebSocketConn) ReadMessage() (messageType int, data []byte, err error) {
-	if c.IsClosed() {
-		return 0, nil, ErrWebSocketClosed
-	}
+	for {
+		if c.IsClosed() {
+			return 0, nil, ErrWebSocketClosed
+		}
 
-	// Read frame header
-	header := make([]byte, 2)
-	if _, err := io.ReadFull(c.reader, header); err != nil {
-		return 0, nil, err
-	}
-
-	// Parse header
-	fin := header[0]&0x80 != 0
-	opcode := int(header[0] & 0x0F)
-	masked := header[1]&0x80 != 0
-	payloadLen := int(header[1] & 0x7F)
-
-	// Extended payload length
-	if payloadLen == 126 {
-		extLen := make([]byte, 2)
-		if _, err := io.ReadFull(c.reader, extLen); err != nil {
+		// Read frame header
+		header := make([]byte, 2)
+		if _, err := io.ReadFull(c.reader, header); err != nil {
 			return 0, nil, err
 		}
-		payloadLen = int(binary.BigEndian.Uint16(extLen))
-	} else if payloadLen == 127 {
-		extLen := make([]byte, 8)
-		if _, err := io.ReadFull(c.reader, extLen); err != nil {
+
+		// Parse header
+		fin := header[0]&0x80 != 0
+		opcode := int(header[0] & 0x0F)
+		masked := header[1]&0x80 != 0
+		payloadLen := int(header[1] & 0x7F)
+
+		// Extended payload length
+		if payloadLen == 126 {
+			extLen := make([]byte, 2)
+			if _, err := io.ReadFull(c.reader, extLen); err != nil {
+				return 0, nil, err
+			}
+			payloadLen = int(binary.BigEndian.Uint16(extLen))
+		} else if payloadLen == 127 {
+			extLen := make([]byte, 8)
+			if _, err := io.ReadFull(c.reader, extLen); err != nil {
+				return 0, nil, err
+			}
+			payloadLen = int(binary.BigEndian.Uint64(extLen))
+		}
+
+		// Read masking key (if present)
+		var maskKey []byte
+		if masked {
+			maskKey = make([]byte, 4)
+			if _, err := io.ReadFull(c.reader, maskKey); err != nil {
+				return 0, nil, err
+			}
+		}
+
+		// Read payload
+		payload := make([]byte, payloadLen)
+		if _, err := io.ReadFull(c.reader, payload); err != nil {
 			return 0, nil, err
 		}
-		payloadLen = int(binary.BigEndian.Uint64(extLen))
-	}
 
-	// Read masking key (if present)
-	var maskKey []byte
-	if masked {
-		maskKey = make([]byte, 4)
-		if _, err := io.ReadFull(c.reader, maskKey); err != nil {
-			return 0, nil, err
+		// Unmask payload
+		if masked {
+			for i := range payload {
+				payload[i] ^= maskKey[i%4]
+			}
 		}
-	}
 
-	// Read payload
-	payload := make([]byte, payloadLen)
-	if _, err := io.ReadFull(c.reader, payload); err != nil {
-		return 0, nil, err
-	}
-
-	// Unmask payload
-	if masked {
-		for i := range payload {
-			payload[i] ^= maskKey[i%4]
+		// Handle control frames (ping, pong, close) - must not be fragmented
+		if opcode >= CloseMessage {
+			return opcode, payload, nil
 		}
-	}
 
-	// Handle fragmentation (simplified - only handle single frames)
-	if !fin {
-		// For simplicity, we don't handle fragmented messages
-		return 0, nil, ErrWebSocketInvalidData
-	}
+		// Handle fragmentation
+		if opcode != 0 {
+			// This is either a non-fragmented message or the first fragment
+			if fin {
+				// Complete, non-fragmented message
+				return opcode, payload, nil
+			}
+			// First fragment - store opcode and start buffering
+			c.fragmentOpcode = opcode
+			c.fragmentBuffer = payload
+		} else {
+			// Continuation frame (opcode == 0)
+			if c.fragmentBuffer == nil {
+				// Received continuation without initial fragment
+				return 0, nil, ErrWebSocketInvalidData
+			}
+			// Append to buffer
+			c.fragmentBuffer = append(c.fragmentBuffer, payload...)
 
-	return opcode, payload, nil
+			if fin {
+				// Final fragment - return complete message
+				opcode := c.fragmentOpcode
+				data := c.fragmentBuffer
+				c.fragmentBuffer = nil
+				c.fragmentOpcode = 0
+				return opcode, data, nil
+			}
+		}
+		// Continue reading fragments
+	}
 }
 
 // WriteMessage writes a message to the WebSocket connection

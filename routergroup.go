@@ -72,6 +72,16 @@ func (g *RouterGroup) OPTIONS(relativePath string, handlers ...HandlerFunc) *Rou
 	return g.Handle(http.MethodOptions, relativePath, handlers...)
 }
 
+// CONNECT registers a CONNECT handler
+func (g *RouterGroup) CONNECT(relativePath string, handlers ...HandlerFunc) *RouterGroup {
+	return g.Handle(http.MethodConnect, relativePath, handlers...)
+}
+
+// TRACE registers a TRACE handler
+func (g *RouterGroup) TRACE(relativePath string, handlers ...HandlerFunc) *RouterGroup {
+	return g.Handle(http.MethodTrace, relativePath, handlers...)
+}
+
 // Any registers a handler for all HTTP methods
 func (g *RouterGroup) Any(relativePath string, handlers ...HandlerFunc) *RouterGroup {
 	g.GET(relativePath, handlers...)
@@ -81,6 +91,8 @@ func (g *RouterGroup) Any(relativePath string, handlers ...HandlerFunc) *RouterG
 	g.PATCH(relativePath, handlers...)
 	g.HEAD(relativePath, handlers...)
 	g.OPTIONS(relativePath, handlers...)
+	g.CONNECT(relativePath, handlers...)
+	g.TRACE(relativePath, handlers...)
 	return g
 }
 

@@ -3,6 +3,7 @@ package rue
 import (
 	"encoding/xml"
 	"errors"
+	"io"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/bytedance/sonic"
 )
+
+// ErrRequestBodyTooLarge is returned when request body exceeds MaxRequestBodySize
+var ErrRequestBodyTooLarge = errors.New("request body too large")
 
 // BindingError represents a binding error
 type BindingError struct {
@@ -48,7 +52,26 @@ func (b *DefaultBinder) bindJSON(c *Context, obj any) error {
 	if c.Request.Body == nil {
 		return errors.New("request body is empty")
 	}
-	return sonic.ConfigDefault.NewDecoder(c.Request.Body).Decode(obj)
+
+	// Apply body size limit
+	maxSize := c.engine.MaxRequestBodySize
+	if maxSize <= 0 {
+		maxSize = 4 << 20 // 4MB default
+	}
+
+	// Use LimitReader to prevent large payload attacks
+	limitedReader := io.LimitReader(c.Request.Body, maxSize+1)
+	body, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return err
+	}
+
+	// Check if we hit the limit
+	if int64(len(body)) > maxSize {
+		return ErrRequestBodyTooLarge
+	}
+
+	return sonic.Unmarshal(body, obj)
 }
 
 // bindXML binds XML request body
@@ -56,7 +79,26 @@ func (b *DefaultBinder) bindXML(c *Context, obj any) error {
 	if c.Request.Body == nil {
 		return errors.New("request body is empty")
 	}
-	return xml.NewDecoder(c.Request.Body).Decode(obj)
+
+	// Apply body size limit
+	maxSize := c.engine.MaxRequestBodySize
+	if maxSize <= 0 {
+		maxSize = 4 << 20 // 4MB default
+	}
+
+	// Use LimitReader to prevent large payload attacks
+	limitedReader := io.LimitReader(c.Request.Body, maxSize+1)
+	body, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return err
+	}
+
+	// Check if we hit the limit
+	if int64(len(body)) > maxSize {
+		return ErrRequestBodyTooLarge
+	}
+
+	return xml.Unmarshal(body, obj)
 }
 
 // bindForm binds form data
