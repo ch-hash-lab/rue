@@ -1,17 +1,17 @@
 module github.com/ch-hash-lab/rue
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/andybalholm/brotli v1.2.0
-	github.com/bytedance/sonic v1.14.2
+	github.com/bytedance/sonic v1.15.0
 	github.com/quic-go/quic-go v0.58.0
 	google.golang.org/grpc v1.78.0
 )
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic/loader v0.4.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
