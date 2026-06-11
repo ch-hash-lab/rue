@@ -1,36 +1,50 @@
 package rue
 
-import (
-	"sync"
-)
-
-// Router is the high-performance router based on Radix Tree
+// Router maps HTTP method + request path to a registered handler chain.
+//
+// Patterns are '/'-separated. Each pattern segment takes one of four forms:
+//
+//	literal      /users/all
+//	capture      /users/:id    matches exactly one non-empty segment
+//	prefixed     /file_:name   literal prefix plus capture of the remainder
+//	trailing     /assets/*rest absorbs everything left of the path; must be
+//	                           the final segment and directly follow a '/';
+//	                           the captured value keeps its leading '/'
+//
+// Registration is write-side: all addRoute calls must finish before the
+// router starts serving. Lookups (getValue) are read-only and safe for
+// unlimited concurrent use once registration is done.
+//
+// Trailing-capture values are handed to handlers verbatim — a file-serving
+// handler downstream owns its own ".." sanitization.
 type Router struct {
-	trees      map[string]*node
-	paramsPool sync.Pool
-	maxParams  uint16
+	roots   map[string]*segNode             // method → segment-trie root
+	statics map[string]map[string]staticHit // optional exact-match fast path; nil = disabled
+	maxVars int                             // largest capture count of any registered pattern
 }
 
-// nodeType represents the type of a node
-type nodeType uint8
+// staticHit is one entry of the optional exact-match fast path.
+type staticHit struct {
+	chain   HandlersChain
+	pattern string
+}
 
-const (
-	staticNode   nodeType = iota // static node
-	rootNode                     // root node
-	paramNode                    // parameter node :id
-	catchAllNode                 // wildcard node *filepath
-)
-
-// node represents a node in the Radix Tree
-type node struct {
-	path      string
-	indices   string
-	wildChild bool
-	nType     nodeType
-	priority  uint32
-	children  []*node
-	handlers  HandlersChain
-	fullPath  string
+// segNode is one path segment in the trie. A node owns up to four kinds of
+// children, tried most-specific-first during a lookup: exact literals,
+// prefixed captures (longest prefix first), one bare capture, and one
+// trailing capture. The kinds are mutually exclusive per child, not per
+// node — except a trailing capture, which cannot share a node with any
+// other child kind (the position would be ambiguous).
+type segNode struct {
+	label      string     // literal text: whole segment (statics) or prefix (mixes)
+	name       string     // capture name (mixes, capture, tail)
+	statics    []*segNode // exact-literal children
+	firstChars []byte     // firstChars[i] is the first byte of statics[i].label (0 for empty)
+	mixes      []*segNode // prefixed-capture children, longest prefix first
+	capture    *segNode   // bare ':name' child
+	tail       *segNode   // '*name' child; terminal by construction
+	chain      HandlersChain
+	pattern    string // the registered pattern, set where chain is set
 }
 
 // Params holds path parameters
@@ -60,392 +74,349 @@ func (ps Params) ByName(name string) string {
 
 // newRouter creates a new Router
 func newRouter() *Router {
-	return &Router{
-		trees: make(map[string]*node),
-	}
+	return &Router{roots: make(map[string]*segNode)}
 }
 
-// addRoute registers a new route
+// addRoute registers a new route. It panics on malformed patterns and on
+// registrations that conflict with an existing route — both are developer
+// errors that must surface at startup, never at request time.
 func (r *Router) addRoute(method, path string, handlers HandlersChain) {
-	if path[0] != '/' {
-		panic("path must begin with '/'")
+	if len(path) == 0 || path[0] != '/' {
+		panic("rue: route pattern must start with '/'")
 	}
 	if method == "" {
-		panic("HTTP method can not be empty")
+		panic("rue: HTTP method is required")
 	}
 	if len(handlers) == 0 {
-		panic("there must be at least one handler")
+		panic("rue: route needs at least one handler")
 	}
 
-	root := r.trees[method]
+	root := r.roots[method]
 	if root == nil {
-		root = &node{nType: rootNode}
-		r.trees[method] = root
+		root = &segNode{}
+		r.roots[method] = root
 	}
 
-	root.addRoute(path, handlers)
+	if vars := root.mount(path, handlers); vars > r.maxVars {
+		r.maxVars = vars
+	}
 }
 
 // getValue returns the handlers and params for a given path
 func (r *Router) getValue(method, path string, params *Params) (HandlersChain, string, bool) {
-	root := r.trees[method]
-	if root == nil {
+	if r.statics != nil {
+		if hit, ok := r.statics[method][path]; ok {
+			return hit.chain, hit.pattern, true
+		}
+	}
+	root := r.roots[method]
+	if root == nil || len(path) == 0 || path[0] != '/' {
 		return nil, "", false
 	}
-	return root.getValue(path, params)
+	return root.resolve(path, params, r.maxVars)
 }
 
-// addRoute adds a route to the node
-func (n *node) addRoute(path string, handlers HandlersChain) {
-	fullPath := path
-	n.priority++
+// mount registers pattern below n and returns the pattern's capture count.
+func (n *segNode) mount(pattern string, chain HandlersChain) int {
+	vars := 0
+	cur := n
+	start := 1
+	for start <= len(pattern) {
+		end := start
+		for end < len(pattern) && pattern[end] != '/' {
+			end++
+		}
+		seg := pattern[start:end]
 
-	// Empty tree
-	if len(n.path) == 0 && len(n.children) == 0 {
-		n.insertChild(path, fullPath, handlers)
-		n.nType = rootNode
-		return
+		marker := -1
+		for i := 0; i < len(seg); i++ {
+			if seg[i] == ':' || seg[i] == '*' {
+				marker = i
+				break
+			}
+		}
+
+		switch {
+		case marker < 0:
+			cur = cur.literalChild(seg, pattern)
+
+		case seg[marker] == ':':
+			name := seg[marker+1:]
+			checkCaptureName(name, pattern)
+			vars++
+			if marker > 0 {
+				cur = cur.prefixedChild(seg[:marker], name, pattern)
+			} else {
+				cur = cur.captureChild(name, pattern)
+			}
+
+		default: // '*'
+			if marker != 0 {
+				panic("rue: '*' capture must directly follow a '/' (pattern '" + pattern + "')")
+			}
+			if end != len(pattern) {
+				panic("rue: '*' capture must be the final segment (pattern '" + pattern + "')")
+			}
+			checkCaptureName(seg[1:], pattern)
+			vars++
+			cur = cur.tailChild(seg[1:], pattern)
+		}
+
+		start = end + 1
 	}
 
-	parentFullPathIndex := 0
+	if cur.chain != nil {
+		panic("rue: duplicate registration for pattern '" + pattern + "'")
+	}
+	cur.chain = chain
+	cur.pattern = pattern
+	return vars
+}
 
-walk:
-	for {
-		// Find the longest common prefix
-		i := longestCommonPrefix(path, n.path)
-
-		// Split edge
-		if i < len(n.path) {
-			child := node{
-				path:      n.path[i:],
-				wildChild: n.wildChild,
-				nType:     staticNode,
-				indices:   n.indices,
-				children:  n.children,
-				handlers:  n.handlers,
-				priority:  n.priority - 1,
-				fullPath:  n.fullPath,
-			}
-
-			n.children = []*node{&child}
-			n.indices = string([]byte{n.path[i]})
-			n.path = path[:i]
-			n.handlers = nil
-			n.wildChild = false
-			n.fullPath = fullPath[:parentFullPathIndex+i]
+// checkCaptureName rejects empty and multi-marker capture names.
+func checkCaptureName(name, pattern string) {
+	if name == "" {
+		panic("rue: ':' and '*' captures require a name (pattern '" + pattern + "')")
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] == ':' || name[i] == '*' {
+			panic("rue: a path segment may hold at most one ':' or '*' capture (pattern '" + pattern + "')")
 		}
-
-		// Make new node a child of this node
-		if i < len(path) {
-			path = path[i:]
-			c := path[0]
-
-			// Check if a child with the next path byte exists
-			for i, max := 0, len(n.indices); i < max; i++ {
-				if c == n.indices[i] {
-					parentFullPathIndex += len(n.path)
-					i = n.incrementChildPrio(i)
-					n = n.children[i]
-					continue walk
-				}
-			}
-
-			// Otherwise insert it
-			if c != ':' && c != '*' {
-				n.indices += string([]byte{c})
-				child := &node{
-					fullPath: fullPath,
-				}
-				n.children = append(n.children, child)
-				n.incrementChildPrio(len(n.indices) - 1)
-				n = child
-			} else if n.wildChild {
-				// Check if the wildcard matches
-				n = n.children[len(n.children)-1]
-				n.priority++
-
-				// Check if the wildcard matches
-				if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
-					n.nType != catchAllNode &&
-					(len(n.path) >= len(path) || path[len(n.path)] == '/') {
-					continue walk
-				}
-
-				panic("conflict with wildcard route")
-			}
-
-			n.insertChild(path, fullPath, handlers)
-			return
-		}
-
-		// Otherwise add handle to current node
-		if n.handlers != nil {
-			panic("handlers are already registered for path '" + fullPath + "'")
-		}
-		n.handlers = handlers
-		n.fullPath = fullPath
-		return
 	}
 }
 
-// insertChild inserts a child node
-func (n *node) insertChild(path, fullPath string, handlers HandlersChain) {
-	for {
-		// Find prefix until first wildcard
-		wildcard, i, valid := findWildcard(path)
-		if i < 0 {
+func (n *segNode) literalChild(seg, pattern string) *segNode {
+	var c byte
+	if len(seg) > 0 {
+		c = seg[0]
+	}
+	for i, fc := range n.firstChars {
+		if fc == c && n.statics[i].label == seg {
+			return n.statics[i]
+		}
+	}
+	if n.tail != nil {
+		panic("rue: pattern '" + pattern + "' conflicts with capture '*" + n.tail.name + "' registered at this position")
+	}
+	child := &segNode{label: seg}
+	n.statics = append(n.statics, child)
+	n.firstChars = append(n.firstChars, c)
+	return child
+}
+
+func (n *segNode) prefixedChild(prefix, name, pattern string) *segNode {
+	for _, m := range n.mixes {
+		if m.label == prefix {
+			if m.name != name {
+				panic("rue: pattern '" + pattern + "' conflicts with capture ':" + m.name + "' already registered at this position")
+			}
+			return m
+		}
+	}
+	if n.tail != nil {
+		panic("rue: pattern '" + pattern + "' conflicts with capture '*" + n.tail.name + "' registered at this position")
+	}
+	child := &segNode{label: prefix, name: name}
+	// keep the longest prefix first so the most specific form is tried first
+	at := len(n.mixes)
+	for i, m := range n.mixes {
+		if len(m.label) < len(prefix) {
+			at = i
 			break
 		}
-
-		if !valid {
-			panic("only one wildcard per path segment is allowed")
-		}
-
-		if len(wildcard) < 2 {
-			panic("wildcards must be named with a non-empty name")
-		}
-
-		if wildcard[0] == ':' {
-			// Param
-			if i > 0 {
-				n.path = path[:i]
-				path = path[i:]
-			}
-
-			child := &node{
-				nType:    paramNode,
-				path:     wildcard,
-				fullPath: fullPath,
-			}
-			n.wildChild = true
-			n.children = append(n.children, child)
-			n = child
-			n.priority++
-
-			if len(wildcard) < len(path) {
-				path = path[len(wildcard):]
-				child := &node{
-					priority: 1,
-					fullPath: fullPath,
-				}
-				// Set indices for the first character of the remaining path
-				n.indices = string([]byte{path[0]})
-				n.children = append(n.children, child)
-				n = child
-				continue
-			}
-
-			n.handlers = handlers
-			return
-		}
-
-		// catchAll
-		if i+len(wildcard) != len(path) {
-			panic("catch-all routes are only allowed at the end of the path")
-		}
-
-		if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
-			panic("catch-all conflicts with existing handle for the path segment root")
-		}
-
-		i--
-		if path[i] != '/' {
-			panic("no / before catch-all in path '" + fullPath + "'")
-		}
-
-		n.path = path[:i]
-
-		// First node: catchAll node with empty path
-		child := &node{
-			wildChild: true,
-			nType:     catchAllNode,
-			fullPath:  fullPath,
-		}
-		n.children = append(n.children, child)
-		n.indices = string('/')
-		n = child
-		n.priority++
-
-		// Second node: node holding the variable
-		child = &node{
-			path:     path[i:],
-			nType:    catchAllNode,
-			handlers: handlers,
-			priority: 1,
-			fullPath: fullPath,
-		}
-		n.children = append(n.children, child)
-
-		return
 	}
-
-	n.path = path
-	n.handlers = handlers
-	n.fullPath = fullPath
+	n.mixes = append(n.mixes, nil)
+	copy(n.mixes[at+1:], n.mixes[at:])
+	n.mixes[at] = child
+	return child
 }
 
-// getValue returns the handlers for a path
-func (n *node) getValue(path string, params *Params) (handlers HandlersChain, fullPath string, found bool) {
-walk:
+func (n *segNode) captureChild(name, pattern string) *segNode {
+	if n.capture != nil {
+		if n.capture.name != name {
+			panic("rue: pattern '" + pattern + "' conflicts with capture ':" + n.capture.name + "' already registered at this position")
+		}
+		return n.capture
+	}
+	if n.tail != nil {
+		panic("rue: pattern '" + pattern + "' conflicts with capture '*" + n.tail.name + "' registered at this position")
+	}
+	n.capture = &segNode{name: name}
+	return n.capture
+}
+
+func (n *segNode) tailChild(name, pattern string) *segNode {
+	if n.tail != nil {
+		if n.tail.name != name {
+			panic("rue: pattern '" + pattern + "' conflicts with capture '*" + n.tail.name + "' already registered at this position")
+		}
+		return n.tail
+	}
+	// A '*' capture absorbs every continuation, so it cannot share its
+	// position with any other child kind — reject at startup rather than
+	// let one of the two routes become unreachable.
+	if len(n.statics) > 0 || len(n.mixes) > 0 || n.capture != nil {
+		panic("rue: '*' capture (pattern '" + pattern + "') cannot share a position with other routes")
+	}
+	n.tail = &segNode{name: name}
+	return n.tail
+}
+
+// matchFrame is a resume point for backtracking: retry node n at segment
+// offset start, continuing with alternative kind stage at child index idx,
+// after truncating captured params back to nvars.
+type matchFrame struct {
+	n     *segNode
+	start int
+	nvars int
+	stage uint8
+	idx   int
+}
+
+// Alternative kinds, in lookup priority order.
+const (
+	tryStatics uint8 = iota
+	tryMixes
+	tryCapture
+	tryTail
+)
+
+// resolve walks path below n one segment at a time. At every node the
+// alternatives are tried most-specific-first; when a branch dead-ends the
+// walk resumes at the most recent node that still has untried alternatives,
+// so a miss under a literal child falls through to a capture sibling.
+// A resume point is recorded only when such alternatives exist, which keeps
+// purely static lookups free of bookkeeping.
+func (n *segNode) resolve(path string, params *Params, maxVars int) (HandlersChain, string, bool) {
+	var room [16]matchFrame // usually enough; spills to the heap when exceeded
+	frames := room[:0]
+
+	cur := n
+	start := 1
+	stage := tryStatics
+	idx := 0
+
 	for {
-		prefix := n.path
-		if len(path) > len(prefix) {
-			if path[:len(prefix)] == prefix {
-				path = path[len(prefix):]
+		matched := false
 
-				// Try all the non-wildcard children first
-				idxc := path[0]
-				for i, c := range []byte(n.indices) {
-					if c == idxc {
-						n = n.children[i]
-						continue walk
+		if start > len(path) {
+			// every segment consumed — the chain, if any, lives here
+			if cur.chain != nil {
+				return cur.chain, cur.pattern, true
+			}
+		} else {
+			end := start
+			for end < len(path) && path[end] != '/' {
+				end++
+			}
+			seg := path[start:end]
+
+			if stage == tryStatics {
+				var c byte
+				if len(seg) > 0 {
+					c = seg[0]
+				}
+				for i, fc := range cur.firstChars {
+					if fc == c && cur.statics[i].label == seg {
+						if len(cur.mixes) > 0 || cur.capture != nil || cur.tail != nil {
+							frames = append(frames, matchFrame{cur, start, varCount(params), tryMixes, 0})
+						}
+						cur = cur.statics[i]
+						start = end + 1
+						stage, idx = tryStatics, 0
+						matched = true
+						break
 					}
 				}
-
-				// If there is no wildcard pattern, we're done
-				if !n.wildChild {
-					return nil, "", false
+				if !matched {
+					stage, idx = tryMixes, 0
 				}
+			}
 
-				// Handle wildcard child
-				n = n.children[len(n.children)-1]
-
-				switch n.nType {
-				case paramNode:
-					// Find param end
-					end := 0
-					for end < len(path) && path[end] != '/' {
-						end++
-					}
-
-					// Save param value
-					if params != nil {
-						if cap(*params) < int(n.priority) {
-							*params = make(Params, 0, n.priority)
+			if !matched && stage == tryMixes {
+				for ; idx < len(cur.mixes); idx++ {
+					m := cur.mixes[idx]
+					if len(seg) > len(m.label) && seg[:len(m.label)] == m.label {
+						nvars := varCount(params)
+						if idx+1 < len(cur.mixes) || cur.capture != nil || cur.tail != nil {
+							frames = append(frames, matchFrame{cur, start, nvars, tryMixes, idx + 1})
 						}
-						*params = append(*params, Param{
-							Key:   n.path[1:],
-							Value: path[:end],
-						})
+						pushVar(params, m.name, seg[len(m.label):], maxVars)
+						cur = m
+						start = end + 1
+						stage, idx = tryStatics, 0
+						matched = true
+						break
 					}
+				}
+				if !matched {
+					stage, idx = tryCapture, 0
+				}
+			}
 
-					// Continue deeper
-					if end < len(path) {
-						if len(n.children) > 0 {
-							path = path[end:]
-							// Find the correct child node by matching the first character
-							// against the indices (similar to static node matching)
-							if len(n.indices) > 0 {
-								idxc := path[0]
-								for i, c := range []byte(n.indices) {
-									if c == idxc {
-										n = n.children[i]
-										continue walk
-									}
-								}
-							}
-							// If no matching index found, try the first child (for backward compatibility)
-							// This handles cases where there's only one child without indices
-							if len(n.children) == 1 && len(n.indices) == 0 {
-								n = n.children[0]
-								continue walk
-							}
-						}
-						return nil, "", false
+			if !matched && stage == tryCapture {
+				if cur.capture != nil && len(seg) > 0 {
+					if cur.tail != nil {
+						frames = append(frames, matchFrame{cur, start, varCount(params), tryTail, 0})
 					}
+					pushVar(params, cur.capture.name, seg, maxVars)
+					cur = cur.capture
+					start = end + 1
+					stage, idx = tryStatics, 0
+					matched = true
+				} else {
+					stage = tryTail
+				}
+			}
 
-					if handlers = n.handlers; handlers != nil {
-						fullPath = n.fullPath
-						found = true
-						return
-					}
-					return nil, "", false
-
-				case catchAllNode:
-					// Save param value
-					if params != nil {
-						if cap(*params) < 1 {
-							*params = make(Params, 0, 1)
-						}
-						*params = append(*params, Param{
-							Key:   n.path[2:],
-							Value: path,
-						})
-					}
-
-					handlers = n.handlers
-					fullPath = n.fullPath
-					found = true
-					return
-
-				default:
-					panic("invalid node type")
+			if !matched && stage == tryTail {
+				if cur.tail != nil {
+					// the trailing capture keeps its leading '/'
+					pushVar(params, cur.tail.name, path[start-1:], maxVars)
+					return cur.tail.chain, cur.tail.pattern, true
 				}
 			}
 		}
 
-		if path == prefix {
-			if handlers = n.handlers; handlers != nil {
-				fullPath = n.fullPath
-				found = true
-				return
-			}
-		}
-
-		return nil, "", false
-	}
-}
-
-// incrementChildPrio increments priority of the given child and reorders if necessary
-func (n *node) incrementChildPrio(pos int) int {
-	cs := n.children
-	cs[pos].priority++
-	prio := cs[pos].priority
-
-	// Adjust position (move to front)
-	newPos := pos
-	for ; newPos > 0 && cs[newPos-1].priority < prio; newPos-- {
-		cs[newPos-1], cs[newPos] = cs[newPos], cs[newPos-1]
-	}
-
-	// Build new index char string
-	if newPos != pos {
-		n.indices = n.indices[:newPos] +
-			n.indices[pos:pos+1] +
-			n.indices[newPos:pos] +
-			n.indices[pos+1:]
-	}
-
-	return newPos
-}
-
-// longestCommonPrefix finds the longest common prefix
-func longestCommonPrefix(a, b string) int {
-	i := 0
-	max := min(len(a), len(b))
-	for i < max && a[i] == b[i] {
-		i++
-	}
-	return i
-}
-
-// findWildcard finds a wildcard segment
-func findWildcard(path string) (wildcard string, i int, valid bool) {
-	for start, c := range []byte(path) {
-		if c != ':' && c != '*' {
+		if matched {
 			continue
 		}
 
-		valid = true
-		for end, c := range []byte(path[start+1:]) {
-			switch c {
-			case '/':
-				return path[start : start+1+end], start, valid
-			case ':', '*':
-				valid = false
-			}
+		// dead end — resume the most recent unfinished alternative
+		if len(frames) == 0 {
+			return nil, "", false
 		}
-		return path[start:], start, valid
+		f := frames[len(frames)-1]
+		frames = frames[:len(frames)-1]
+		cur, start, stage, idx = f.n, f.start, f.stage, f.idx
+		if params != nil {
+			*params = (*params)[:f.nvars]
+		}
 	}
-	return "", -1, false
+}
+
+func varCount(params *Params) int {
+	if params == nil {
+		return 0
+	}
+	return len(*params)
+}
+
+// pushVar appends one captured parameter. The backing array is sized for
+// the router's largest pattern on first growth, so a reused Params (and
+// therefore the request hot path) allocates at most once.
+func pushVar(params *Params, key, value string, maxVars int) {
+	if params == nil {
+		return
+	}
+	if cap(*params) <= len(*params) {
+		want := maxVars
+		if want < len(*params)+1 {
+			want = len(*params) + 1
+		}
+		grown := make(Params, len(*params), want)
+		copy(grown, *params)
+		*params = grown
+	}
+	*params = append(*params, Param{Key: key, Value: value})
 }
