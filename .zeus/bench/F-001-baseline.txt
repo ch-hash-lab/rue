@@ -1,0 +1,22 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/ch-hash-lab/rue
+cpu: Apple M2
+BenchmarkRouter_StaticRoute-8   	113615571	        10.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRouter_StaticRoute-8   	134475961	         8.911 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRouter_StaticRoute-8   	134485870	         9.055 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRouter_StaticRoute-8   	134681715	         8.986 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRouter_StaticRoute-8   	134540328	         8.901 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRouter_ParamRoute-8    	41778607	        27.75 ns/op	      32 B/op	       1 allocs/op
+BenchmarkRouter_ParamRoute-8    	43144063	        27.63 ns/op	      32 B/op	       1 allocs/op
+BenchmarkRouter_ParamRoute-8    	43922257	        27.62 ns/op	      32 B/op	       1 allocs/op
+BenchmarkRouter_ParamRoute-8    	43905382	        27.82 ns/op	      32 B/op	       1 allocs/op
+BenchmarkRouter_ParamRoute-8    	43746990	        27.74 ns/op	      32 B/op	       1 allocs/op
+BenchmarkRouter_ManyRoutes-8    	24370182	        49.11 ns/op	      96 B/op	       1 allocs/op
+BenchmarkRouter_ManyRoutes-8    	24630267	        49.24 ns/op	      96 B/op	       1 allocs/op
+BenchmarkRouter_ManyRoutes-8    	24673714	        49.33 ns/op	      96 B/op	       1 allocs/op
+BenchmarkRouter_ManyRoutes-8    	24374348	        50.29 ns/op	      96 B/op	       1 allocs/op
+BenchmarkRouter_ManyRoutes-8    	24360885	        49.31 ns/op	      96 B/op	       1 allocs/op
+PASS
+ok  	github.com/ch-hash-lab/rue	25.987s
+
