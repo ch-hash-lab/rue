@@ -134,3 +134,40 @@ func TestRouter_LookupNeverPanics(t *testing.T) {
 		}()
 	}
 }
+
+// F-001 唯一行为增量：static 分支走死后回退 param 分支
+func TestRouter_BacktrackStaticDeadEnd(t *testing.T) {
+	r := newRouter()
+	r.addRoute("GET", "/user/new", noopChain())
+	r.addRoute("GET", "/user/:id", noopChain())
+	var ps Params
+	h, pattern, ok := r.getValue("GET", "/user/newx", &ps)
+	if !ok || h == nil {
+		t.Fatal("/user/newx must fall back to /user/:id")
+	}
+	if pattern != "/user/:id" || ps.ByName("id") != "newx" {
+		t.Fatalf("got pattern=%q id=%q, want /user/:id, newx", pattern, ps.ByName("id"))
+	}
+}
+
+func TestRouter_BacktrackMultiLevel(t *testing.T) {
+	r := newRouter()
+	r.addRoute("GET", "/a/b/c", noopChain())
+	r.addRoute("GET", "/a/:x/d", noopChain())
+	var ps Params
+	_, pattern, ok := r.getValue("GET", "/a/b/d", &ps)
+	if !ok || pattern != "/a/:x/d" || ps.ByName("x") != "b" {
+		t.Fatalf("/a/b/d must backtrack to /a/:x/d, got ok=%v pattern=%q", ok, pattern)
+	}
+}
+
+func TestRouter_BacktrackPrefixParamInterplay(t *testing.T) {
+	r := newRouter()
+	r.addRoute("GET", "/v1/user_admin/list", noopChain())
+	r.addRoute("GET", "/v1/user_:name/info", noopChain())
+	var ps Params
+	_, pattern, ok := r.getValue("GET", "/v1/user_admin/info", &ps)
+	if !ok || pattern != "/v1/user_:name/info" || ps.ByName("name") != "admin" {
+		t.Fatalf("must backtrack from static user_admin to prefix-param, got ok=%v pattern=%q", ok, pattern)
+	}
+}
