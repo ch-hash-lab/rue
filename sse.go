@@ -152,7 +152,9 @@ func (s *SSEClient) Close() {
 		return
 	}
 	s.closed = true
-	close(s.done)
+	if s.done != nil { // zero-value clients have no done channel
+		close(s.done)
+	}
 	s.closeMu.Unlock()
 }
 
