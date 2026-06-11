@@ -618,12 +618,13 @@ r.GET("/", func(c *rue.Context) {
 ## Benchmarks
 
 ```
-BenchmarkRouter_StaticRoute-8       145144989    8.348 ns/op     0 B/op    0 allocs/op
-BenchmarkRouter_ParamRoute-8         44290861   26.83 ns/op     32 B/op    1 allocs/op
-BenchmarkEngine_SimpleRoute-8         3112678  387.5 ns/op    1064 B/op   11 allocs/op
-BenchmarkEngine_JSONResponse-8        1598793  778.3 ns/op    1633 B/op   18 allocs/op
-BenchmarkGzip-8                         26326   43505 ns/op   16668 B/op   15 allocs/op
-BenchmarkBrotli-8                       66400   18099 ns/op   15920 B/op   14 allocs/op
+BenchmarkRouter_StaticRoute-8       181342215    6.640 ns/op     0 B/op    0 allocs/op
+BenchmarkRouter_ParamRoute-8         38045265   31.88 ns/op     32 B/op    1 allocs/op
+BenchmarkRouter_ManyRoutes-8         24370306   48.98 ns/op     64 B/op    1 allocs/op
+BenchmarkEngine_SimpleRoute-8         2905870  420.9 ns/op    1064 B/op   11 allocs/op
+BenchmarkEngine_JSONResponse-8        1240557  982.0 ns/op    1632 B/op   16 allocs/op
+BenchmarkGzip-8                         27502   42767 ns/op   30131 B/op   16 allocs/op
+BenchmarkBrotli-8                       60792   19511 ns/op   30360 B/op   15 allocs/op
 ```
 
 ## Dependencies
