@@ -5,7 +5,8 @@ package rue
 // Patterns are '/'-separated. Each pattern segment takes one of four forms:
 //
 //	literal      /users/all
-//	capture      /users/:id    matches exactly one non-empty segment
+//	capture      /users/:id    matches exactly one segment; an empty segment
+//	                           matches only when another '/' follows
 //	prefixed     /file_:name   literal prefix plus capture of the remainder
 //	trailing     /assets/*rest absorbs everything left of the path; must be
 //	                           the final segment and directly follow a '/';
@@ -97,7 +98,8 @@ type staticHit struct {
 // Literal children are run-compressed: a label spans as many consecutive
 // literal segments as the route shape allows ("api/v1/users"), so a
 // purely static route usually resolves with a single string comparison.
-// Labels never start with '/'; runs split only at segment boundaries.
+// Runs split only at segment boundaries; a label starts with '/' only
+// when its first segment is empty (patterns containing "//").
 type segNode struct {
 	label      string     // literal run (statics) or literal prefix (mixes)
 	name       string     // capture name (mixes, capture, tail)
@@ -313,11 +315,9 @@ func (n *segNode) mountRun(run, pattern string) *segNode {
 				re++
 			}
 			if le != re || l[p:le] != run[p:re] {
-				// diverging segments: fork the label at the last shared boundary
+				// diverging segments: fork the label at the last shared
+				// boundary (p ≥ 1 here — the first segments matched)
 				junction := splitStatic(child, p-1)
-				if p > len(run) {
-					return junction // unreachable; kept for symmetry
-				}
 				rest := &segNode{label: run[p:]}
 				junction.addStatic(rest)
 				return rest
@@ -472,6 +472,9 @@ func (n *segNode) tailChild(name, pattern string) *segNode {
 // matchFrame is a resume point for backtracking: retry node n at path
 // offset start, continuing with alternative kind stage at child index idx,
 // after truncating captured params back to nvars.
+// The narrow fields keep the frame at 24 bytes; both bounds are
+// registration-side limits no realistic route table approaches
+// (paths ≤ 2GiB, ≤ 65535 prefixed captures per node).
 type matchFrame struct {
 	n     *segNode
 	start int32
@@ -494,7 +497,7 @@ const (
 // alternatives, so a miss under a literal child falls through to a capture
 // sibling. A resume point is recorded only when such alternatives exist.
 func (n *segNode) resolveDynamic(path string, start int, params *Params, maxVars int) (HandlersChain, string, bool) {
-	var room [4]matchFrame // usually enough; spills to the heap when exceeded
+	var room [8]matchFrame // usually enough; spills to the heap when exceeded
 	frames := room[:0]
 
 	cur := n
@@ -546,7 +549,10 @@ func (n *segNode) resolveDynamic(path string, start int, params *Params, maxVars
 				if stage == tryMixes {
 					for ; idx < len(cur.mixes); idx++ {
 						m := cur.mixes[idx]
-						if len(seg) > len(m.label) && seg[:len(m.label)] == m.label {
+						// the captured remainder may be empty, but only when
+						// another '/' follows (historical parity)
+						if len(seg) >= len(m.label) && seg[:len(m.label)] == m.label &&
+							(len(seg) > len(m.label) || end < len(path)) {
 							nvars := varCount(params)
 							if idx+1 < len(cur.mixes) || cur.capture != nil || cur.tail != nil {
 								frames = append(frames, matchFrame{cur, int32(start), int32(nvars), tryMixes, uint16(idx + 1)})
@@ -564,7 +570,9 @@ func (n *segNode) resolveDynamic(path string, start int, params *Params, maxVars
 				}
 
 				if !matched && stage == tryCapture {
-					if cur.capture != nil && len(seg) > 0 {
+					// an empty segment is capturable only when another '/'
+					// follows (historical parity)
+					if cur.capture != nil && (len(seg) > 0 || end < len(path)) {
 						if cur.tail != nil {
 							frames = append(frames, matchFrame{cur, int32(start), int32(varCount(params)), tryTail, 0})
 						}
