@@ -171,3 +171,34 @@ func TestRouter_BacktrackPrefixParamInterplay(t *testing.T) {
 		t.Fatalf("must backtrack from static user_admin to prefix-param, got ok=%v pattern=%q", ok, pattern)
 	}
 }
+
+// 空捕获语义对等（G6 评审发现 3）：非末尾位置捕获可为空，末尾不可
+func TestRouter_EmptyCaptureParity(t *testing.T) {
+	r := newRouter()
+	r.addRoute("GET", "/a/:b/c", noopChain())
+	r.addRoute("GET", "/u_:m/c", noopChain())
+	r.addRoute("GET", "/x/:id", noopChain())
+
+	var ps Params
+	_, pattern, ok := r.getValue("GET", "/a//c", &ps)
+	if !ok || pattern != "/a/:b/c" {
+		t.Fatalf("/a//c must match /a/:b/c with empty capture, got ok=%v pattern=%q", ok, pattern)
+	}
+	if v, found := ps.Get("b"); !found || v != "" {
+		t.Fatalf("b = %q (found=%v), want empty string", v, found)
+	}
+
+	ps = ps[:0]
+	_, pattern, ok = r.getValue("GET", "/u_/c", &ps)
+	if !ok || pattern != "/u_:m/c" {
+		t.Fatalf("/u_/c must match /u_:m/c with empty capture, got ok=%v pattern=%q", ok, pattern)
+	}
+	if v, found := ps.Get("m"); !found || v != "" {
+		t.Fatalf("m = %q (found=%v), want empty string", v, found)
+	}
+
+	// 末尾空段不匹配（与旧实现一致）
+	if _, _, ok := r.getValue("GET", "/x/", nil); ok {
+		t.Fatal("/x/ must NOT match /x/:id (terminal empty capture)")
+	}
+}
