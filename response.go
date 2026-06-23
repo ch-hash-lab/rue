@@ -6,25 +6,26 @@ import (
 	"net/http"
 )
 
-// ResponseWriter is an enhanced http.ResponseWriter interface
+// ResponseWriter extends http.ResponseWriter with status tracking, size
+// accounting, and protocol upgrade helpers (hijack, flush, push).
 type ResponseWriter interface {
 	http.ResponseWriter
 	http.Hijacker
 	http.Flusher
 
-	// Status returns the HTTP response status code
+	// Status reports the status code set via WriteHeader
 	Status() int
-	// Size returns the number of bytes written
+	// Size reports the total bytes written to the body
 	Size() int
-	// Written returns whether the response has been written
+	// Written reports whether headers have been flushed to the network
 	Written() bool
-	// WriteString writes a string to the response
+	// WriteString is a convenience method equivalent to Write([]byte(s))
 	WriteString(s string) (int, error)
-	// WriteHeaderNow forces to write the http header (status code + headers)
+	// WriteHeaderNow flushes the status line and headers immediately
 	WriteHeaderNow()
 }
 
-// responseWriter implements ResponseWriter
+// responseWriter tracks response state for a single request
 type responseWriter struct {
 	http.ResponseWriter
 	status  int
@@ -32,7 +33,7 @@ type responseWriter struct {
 	written bool
 }
 
-// WriteHeader sets the status code
+// WriteHeader records the status code without flushing
 func (w *responseWriter) WriteHeader(code int) {
 	if w.written {
 		return
@@ -40,7 +41,7 @@ func (w *responseWriter) WriteHeader(code int) {
 	w.status = code
 }
 
-// WriteHeaderNow forces to write the http header
+// WriteHeaderNow flushes status and headers to the underlying connection
 func (w *responseWriter) WriteHeaderNow() {
 	if !w.written {
 		w.written = true
