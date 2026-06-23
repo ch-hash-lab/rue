@@ -3,6 +3,8 @@ package rue
 import (
 	"net/http"
 	"path"
+	"slices"
+	"strings"
 )
 
 // RouterGroup is used to configure routes with common prefix and middleware
@@ -22,8 +24,8 @@ func (g *RouterGroup) Use(middleware ...HandlerFunc) *RouterGroup {
 // Group creates a new router group with the given path prefix
 func (g *RouterGroup) Group(relativePath string, handlers ...HandlerFunc) *RouterGroup {
 	return &RouterGroup{
-		basePath:   g.calculateAbsolutePath(relativePath),
-		middleware: g.combineHandlers(handlers),
+		basePath:   g.fullPath(relativePath),
+		middleware: g.mergeChain(handlers),
 		engine:     g.engine,
 		parent:     g,
 	}
@@ -31,8 +33,8 @@ func (g *RouterGroup) Group(relativePath string, handlers ...HandlerFunc) *Route
 
 // Handle registers a new request handler with the given path and method
 func (g *RouterGroup) Handle(method, relativePath string, handlers ...HandlerFunc) *RouterGroup {
-	absolutePath := g.calculateAbsolutePath(relativePath)
-	handlers = g.combineHandlers(handlers)
+	absolutePath := g.fullPath(relativePath)
+	handlers = g.mergeChain(handlers)
 	g.engine.router.addRoute(method, absolutePath, handlers)
 	return g
 }
@@ -113,12 +115,11 @@ func (g *RouterGroup) StaticFile(relativePath, filepath string) *RouterGroup {
 
 // StaticFS serves files from the given file system
 func (g *RouterGroup) StaticFS(relativePath string, fs http.FileSystem) *RouterGroup {
-	absolutePath := g.calculateAbsolutePath(relativePath)
+	absolutePath := g.fullPath(relativePath)
 	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
 
 	handler := func(c *Context) {
 		file := c.Param("filepath")
-		// Check if file exists
 		f, err := fs.Open(file)
 		if err != nil {
 			c.AbortWithStatus(http.StatusNotFound)
@@ -134,37 +135,24 @@ func (g *RouterGroup) StaticFS(relativePath string, fs http.FileSystem) *RouterG
 	return g
 }
 
-// calculateAbsolutePath returns the absolute path for the given relative path
-func (g *RouterGroup) calculateAbsolutePath(relativePath string) string {
-	return joinPaths(g.basePath, relativePath)
+// fullPath returns the absolute path for the given relative path
+func (g *RouterGroup) fullPath(relativePath string) string {
+	return resolvePath(g.basePath, relativePath)
 }
 
-// combineHandlers combines the group's middleware with the given handlers
-func (g *RouterGroup) combineHandlers(handlers HandlersChain) HandlersChain {
-	finalSize := len(g.middleware) + len(handlers)
-	mergedHandlers := make(HandlersChain, finalSize)
-	copy(mergedHandlers, g.middleware)
-	copy(mergedHandlers[len(g.middleware):], handlers)
-	return mergedHandlers
+// mergeChain produces a new handler chain combining group middleware with route handlers
+func (g *RouterGroup) mergeChain(handlers HandlersChain) HandlersChain {
+	return slices.Concat(g.middleware, handlers)
 }
 
-// joinPaths joins two paths
-func joinPaths(absolutePath, relativePath string) string {
-	if relativePath == "" {
-		return absolutePath
+// resolvePath joins a base and relative path, preserving a trailing slash on rel
+func resolvePath(base, rel string) string {
+	if rel == "" {
+		return base
 	}
-
-	finalPath := path.Join(absolutePath, relativePath)
-	if lastChar(relativePath) == '/' && lastChar(finalPath) != '/' {
-		return finalPath + "/"
+	joined := path.Join(base, rel)
+	if strings.HasSuffix(rel, "/") && !strings.HasSuffix(joined, "/") {
+		joined += "/"
 	}
-	return finalPath
-}
-
-// lastChar returns the last character of a string
-func lastChar(str string) uint8 {
-	if str == "" {
-		return 0
-	}
-	return str[len(str)-1]
+	return joined
 }

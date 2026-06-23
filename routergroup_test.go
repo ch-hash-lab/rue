@@ -339,9 +339,9 @@ func TestJoinPaths(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := joinPaths(tt.absolute, tt.relative)
+		result := resolvePath(tt.absolute, tt.relative)
 		if result != tt.expected {
-			t.Errorf("joinPaths(%q, %q) = %q, want %q", tt.absolute, tt.relative, result, tt.expected)
+			t.Errorf("resolvePath(%q, %q) = %q, want %q", tt.absolute, tt.relative, result, tt.expected)
 		}
 	}
 }
