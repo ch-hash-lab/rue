@@ -27,30 +27,43 @@
         <aside class="docs-sidebar" id="sidebar"></aside>
         <main class="docs-content">
             <h1>Testing</h1>
-            <p>Rue includes a built-in Agent for integration testing without starting a server.</p>
-            <h2>Basic Usage</h2>
+            <p>Rue includes a built-in <code>Agent</code> for integration testing without starting a server. It executes requests directly against the engine in-process.</p>
+
+            <h2 id="basic-usage">Basic Usage</h2>
             <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
                 <pre><code class="language-go">func TestAPI(t *testing.T) {
     r := rue.New()
     r.GET("/users/:id", getUser)
-    
+
     agent := rue.NewAgent(r)
-    
-    // Simple GET
+
     resp := agent.Get("/users/123")
     if resp.StatusCode != http.StatusOK {
         t.Errorf("Expected 200, got %d", resp.StatusCode)
     }
-    
-    // Parse JSON response
+
     var result map[string]any
     resp.JSON(&result)
 }</code></pre>
             </div>
-            <h2>Request Methods</h2>
+
+            <h2 id="request-methods">Request Methods</h2>
+            <p>The agent provides convenience methods for all HTTP verbs:</p>
+
             <div class="code-block">
-                <pre><code class="language-go">// GET request
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// GET
 resp := agent.Get("/path")
+
+// POST with raw body
+resp := agent.Post("/path", strings.NewReader("raw body"))
 
 // POST with JSON
 resp := agent.PostJSON("/users", map[string]string{"name": "John"})
@@ -58,31 +71,131 @@ resp := agent.PostJSON("/users", map[string]string{"name": "John"})
 // POST with form data
 resp := agent.PostForm("/login", url.Values{"user": {"john"}, "pass": {"secret"}})
 
-// With headers
-agent.SetHeader("Authorization", "Bearer token")
-resp := agent.Get("/protected")</code></pre>
+// PUT / PUT with JSON
+resp := agent.Put("/users/1", body)
+resp := agent.PutJSON("/users/1", user)
+
+// PATCH / PATCH with JSON
+resp := agent.Patch("/users/1", body)
+resp := agent.PatchJSON("/users/1", partial)
+
+// DELETE
+resp := agent.Delete("/users/1")
+
+// HEAD
+resp := agent.Head("/path")
+
+// OPTIONS
+resp := agent.Options("/path")
+
+// Generic — any method
+resp := agent.Do("TRACE", "/path", nil)</code></pre>
             </div>
-            <h2>Request Builder</h2>
+
+            <h2 id="headers-cookies">Headers and Cookies</h2>
+            <p>Set persistent headers or cookies that apply to all subsequent requests:</p>
+
             <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">agent := rue.NewAgent(r)
+
+// Set headers (persists across requests)
+agent.SetHeader("Authorization", "Bearer token123")
+agent.AddHeader("Accept", "application/json")
+
+// Set cookies
+agent.SetCookie(&http.Cookie{Name: "session", Value: "abc"})
+
+// Clear when done
+agent.ClearHeaders()
+agent.ClearCookies()</code></pre>
+            </div>
+
+            <h2 id="request-builder">Request Builder</h2>
+            <p>For complex requests, use the fluent builder:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
                 <pre><code class="language-go">resp := agent.NewRequest("POST", "/search").
     Query("q", "test").
     Query("page", "1").
     Header("X-Custom", "value").
     JSON(map[string]string{"filter": "active"}).
+    Send()
+
+// Form data via builder
+resp := agent.NewRequest("POST", "/upload").
+    Header("X-Request-ID", "req-001").
+    Form(url.Values{"field": {"value"}}).
     Send()</code></pre>
             </div>
-            <h2>Response Methods</h2>
+
+            <h2 id="response">AgentResponse</h2>
+            <p>Every request returns an <code>AgentResponse</code> with these fields and methods:</p>
+
             <table>
-                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <thead><tr><th>Field / Method</th><th>Description</th></tr></thead>
                 <tbody>
-                    <tr><td><code>resp.StatusCode</code></td><td>HTTP status code</td></tr>
-                    <tr><td><code>resp.Body</code></td><td>Raw response body</td></tr>
-                    <tr><td><code>resp.JSON(&v)</code></td><td>Parse JSON into struct</td></tr>
-                    <tr><td><code>resp.Header.Get(key)</code></td><td>Get response header</td></tr>
+                    <tr><td><code>resp.StatusCode</code></td><td>HTTP status code (int)</td></tr>
+                    <tr><td><code>resp.Headers</code></td><td>Response headers (http.Header)</td></tr>
+                    <tr><td><code>resp.Body</code></td><td>Raw response body ([]byte)</td></tr>
+                    <tr><td><code>resp.Cookies</code></td><td>Response cookies ([]*http.Cookie)</td></tr>
+                    <tr><td><code>resp.String()</code></td><td>Body as string</td></tr>
+                    <tr><td><code>resp.JSON(&v)</code></td><td>Unmarshal body into struct/map</td></tr>
                 </tbody>
             </table>
+
+            <h2 id="full-example">Full Example</h2>
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">func TestUserCRUD(t *testing.T) {
+    r := rue.New()
+    setupRoutes(r)
+    agent := rue.NewAgent(r)
+    agent.SetHeader("Content-Type", "application/json")
+
+    // Create
+    resp := agent.PostJSON("/api/users", map[string]string{
+        "name":  "Alice",
+        "email": "alice@example.com",
+    })
+    assert(t, resp.StatusCode == http.StatusCreated)
+
+    var created map[string]any
+    resp.JSON(&created)
+    id := created["id"].(string)
+
+    // Read
+    resp = agent.Get("/api/users/" + id)
+    assert(t, resp.StatusCode == http.StatusOK)
+
+    // Update
+    resp = agent.PutJSON("/api/users/"+id, map[string]string{
+        "name": "Alice Updated",
+    })
+    assert(t, resp.StatusCode == http.StatusOK)
+
+    // Delete
+    resp = agent.Delete("/api/users/" + id)
+    assert(t, resp.StatusCode == http.StatusNoContent)
+
+    // Verify gone
+    resp = agent.Get("/api/users/" + id)
+    assert(t, resp.StatusCode == http.StatusNotFound)
+}</code></pre>
+            </div>
+
             <nav class="docs-nav">
-                <a href="/rue/docs/compression.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Compression</span></a>
+                <a href="/rue/docs/environment.html" class="docs-nav-link"><span class="docs-nav-label">Previous</span><span class="docs-nav-title">← Environment</span></a>
                 <a href="/rue/docs/api-reference.html" class="docs-nav-link next"><span class="docs-nav-label">Next</span><span class="docs-nav-title">API Reference →</span></a>
             </nav>
         </main>

@@ -32,7 +32,7 @@
 
         <main class="docs-content">
             <h1>Routing</h1>
-            <p>Rue uses a high-performance radix tree router that achieves ~8ns for static routes and ~27ns for parameterized routes with zero allocations.</p>
+            <p>Rue uses a high-performance segment trie router. Each pattern is split by <code>/</code> into segments, and each segment is matched independently — giving clean priority semantics and fast lookup with minimal allocations.</p>
 
             <h2 id="basic-routes">Basic Routes</h2>
             <p>Register routes using HTTP method functions:</p>
@@ -190,13 +190,49 @@ r.GET("/legacy", func(c *rue.Context) {
 })</code></pre>
             </div>
 
+            <h2 id="segment-types">Segment Types</h2>
+            <p>Each segment in a pattern takes one of four forms:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Form</th>
+                        <th>Example</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Literal</td>
+                        <td><code>/users/all</code></td>
+                        <td>Exact match</td>
+                    </tr>
+                    <tr>
+                        <td>Capture</td>
+                        <td><code>/users/:id</code></td>
+                        <td>Matches exactly one segment</td>
+                    </tr>
+                    <tr>
+                        <td>Prefixed</td>
+                        <td><code>/file_:name</code></td>
+                        <td>Literal prefix plus capture of the remainder</td>
+                    </tr>
+                    <tr>
+                        <td>Trailing</td>
+                        <td><code>/assets/*rest</code></td>
+                        <td>Absorbs everything left; must be the final segment</td>
+                    </tr>
+                </tbody>
+            </table>
+
             <h2 id="route-priority">Route Priority</h2>
-            <p>Routes are matched in the following priority order:</p>
+            <p>At each segment level, the router evaluates candidates in this order:</p>
 
             <ol>
-                <li><strong>Static routes</strong> - Exact path matches</li>
-                <li><strong>Named parameters</strong> - <code>:param</code> patterns</li>
-                <li><strong>Wildcard parameters</strong> - <code>*param</code> patterns</li>
+                <li><strong>Literal</strong> — exact segment match</li>
+                <li><strong>Prefixed capture</strong> — <code>prefix_:param</code></li>
+                <li><strong>Capture</strong> — <code>:param</code></li>
+                <li><strong>Trailing capture</strong> — <code>*param</code></li>
             </ol>
 
             <div class="code-block">
@@ -204,36 +240,46 @@ r.GET("/legacy", func(c *rue.Context) {
                     <span class="code-block-lang">go</span>
                     <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
                 </div>
-                <pre><code class="language-go">r.GET("/users/new", newUserForm)     // Matches first for /users/new
-r.GET("/users/:id", getUser)         // Matches /users/123
-r.GET("/users/*action", userAction)  // Matches /users/123/edit/profile</code></pre>
+                <pre><code class="language-go">r.GET("/users/new", newUserForm)     // Matches first for /users/new (literal)
+r.GET("/users/:id", getUser)         // Matches /users/123 (capture)
+r.GET("/users/*action", userAction)  // Matches /users/123/edit/profile (trailing)
+r.GET("/file_:name", getFile)        // Matches /file_report.csv (prefixed)</code></pre>
             </div>
 
-            <div class="callout callout-warning">
-                <div class="callout-title">⚠️ Route Conflicts</div>
-                <p>Be careful with overlapping routes. Static routes should be registered before parameterized routes with the same prefix.</p>
+            <div class="callout callout-info">
+                <div class="callout-title">Registration Order</div>
+                <p>Priority is determined by segment type, not registration order. You can register routes in any order — the trie always prefers the most specific match.</p>
             </div>
 
             <h2 id="benchmarks">Performance</h2>
-            <p>Rue's router is optimized for speed:</p>
+            <p>Benchmarks on the segment trie router:</p>
 
             <table>
                 <thead>
                     <tr>
-                        <th>Route Type</th>
+                        <th>Benchmark</th>
                         <th>Time</th>
+                        <th>Memory</th>
                         <th>Allocations</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td>Static Route</td>
-                        <td>~8ns</td>
+                        <td>~6.6 ns/op</td>
+                        <td>0 B</td>
                         <td>0</td>
                     </tr>
                     <tr>
                         <td>Param Route</td>
-                        <td>~27ns</td>
+                        <td>~31.9 ns/op</td>
+                        <td>32 B</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>Many Routes (large trie)</td>
+                        <td>~49.0 ns/op</td>
+                        <td>64 B</td>
                         <td>1</td>
                     </tr>
                 </tbody>

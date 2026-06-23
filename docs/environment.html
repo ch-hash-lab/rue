@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment - Rue Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/rue/css/style.css">
+    <link rel="stylesheet" href="/rue/css/docs.css">
+    <link rel="stylesheet" href="/rue/css/prism.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/rue/index.html" class="nav-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rue</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/rue/index.html">Home</a></li>
+                <li><a href="/rue/docs/getting-started.html" class="active">Docs</a></li>
+                <li><a href="/rue/docs/api-reference.html">API</a></li>
+                <li><a href="https://github.com/ch-hash-lab/rue" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-sidebar" id="sidebar"></aside>
+
+        <main class="docs-content">
+            <h1>Environment</h1>
+            <p>Rue supports development and production modes with different default configurations. The mode controls log verbosity, format, and output behavior.</p>
+
+            <h2 id="modes">Running Modes</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Constant</th>
+                        <th>Log Level</th>
+                        <th>Log Format</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Development</td>
+                        <td><code>rue.DevMode</code></td>
+                        <td>Debug</td>
+                        <td>Text</td>
+                    </tr>
+                    <tr>
+                        <td>Production</td>
+                        <td><code>rue.PrdMode</code></td>
+                        <td>Info</td>
+                        <td>JSON</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 id="setting-mode">Setting the Mode</h2>
+            <p>Set the mode via environment variable or in code:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">bash</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-bash"># Via environment variable
+export RUE_MODE=prd
+./myapp</code></pre>
+            </div>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Set in code before creating the engine
+rue.SetMode(rue.PrdMode)
+
+r := rue.Default()</code></pre>
+            </div>
+
+            <h2 id="fluent-api">Fluent Configuration API</h2>
+            <p><code>SetMode</code> returns a builder for chaining overrides on top of the mode defaults:</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">// Production mode but keep debug-level logs
+rue.SetMode(rue.PrdMode).
+    LogLevel(rue.DebugLevel)
+
+// Development mode with JSON format for log aggregators
+rue.SetMode(rue.DevMode).
+    Format(rue.JSONFormat).
+    EnableColor(false)
+
+// Full customization
+rue.SetMode(rue.PrdMode).
+    LogLevel(rue.WarnLevel).
+    Format(rue.JSONFormat).
+    EnableCaller(true).
+    EnableColor(false)</code></pre>
+            </div>
+
+            <h2 id="builder-methods">Builder Methods</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>LogLevel(level)</code></td>
+                        <td>Override the mode's default log level</td>
+                    </tr>
+                    <tr>
+                        <td><code>Format(format)</code></td>
+                        <td>Override the mode's default log format (Text or JSON)</td>
+                    </tr>
+                    <tr>
+                        <td><code>EnableColor(bool)</code></td>
+                        <td>Enable or disable colored output</td>
+                    </tr>
+                    <tr>
+                        <td><code>EnableCaller(bool)</code></td>
+                        <td>Enable or disable caller information in logs</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">Override Behavior</div>
+                <p>Calling <code>SetMode</code> resets all custom overrides. Chain overrides immediately after <code>SetMode</code>, not in a separate statement.</p>
+            </div>
+
+            <h2 id="querying-mode">Querying the Mode</h2>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">mode := rue.GetMode()  // rue.DevMode or rue.PrdMode
+
+if rue.IsDevMode() {
+    // Development-only setup
+    r.Use(rue.DetailedLogger())
+}
+
+if rue.IsPrdMode() {
+    // Production-only setup
+    r.ErrorHandler = rue.JSONErrorHandler(false)
+}</code></pre>
+            </div>
+
+            <h2 id="effective-config">Effective Configuration</h2>
+            <p>Retrieve the resolved config (mode defaults merged with overrides):</p>
+
+            <div class="code-block">
+                <div class="code-block-header">
+                    <span class="code-block-lang">go</span>
+                    <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code class="language-go">config := rue.GetModeConfig()
+
+fmt.Println(config.LogLevel)     // Current effective log level
+fmt.Println(config.LogFormat)    // Current effective log format
+fmt.Println(config.EnableCaller) // Whether caller info is enabled
+fmt.Println(config.EnableColor)  // Whether color output is enabled</code></pre>
+            </div>
+
+            <nav class="docs-nav">
+                <a href="/rue/docs/error-handling.html" class="docs-nav-link">
+                    <span class="docs-nav-label">Previous</span>
+                    <span class="docs-nav-title">← Error Handling</span>
+                </a>
+                <a href="/rue/docs/testing.html" class="docs-nav-link next">
+                    <span class="docs-nav-label">Next</span>
+                    <span class="docs-nav-title">Testing →</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <button class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+    <script src="/rue/js/sidebar.js"></script>
+    <script src="/rue/js/prism.js"></script>
+    <script src="/rue/js/main.js"></script>
+</body>
+</html>

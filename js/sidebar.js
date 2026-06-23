@@ -28,11 +28,14 @@ const sidebarHTML = `
         <li><a href="/rue/docs/graphql.html">GraphQL</a></li>
         <li><a href="/rue/docs/grpc.html">gRPC</a></li>
         <li><a href="/rue/docs/quic.html">QUIC/HTTP3</a></li>
+        <li><a href="/rue/docs/webrtc.html">WebRTC Signaling</a></li>
     </ul>
 </div>
 <div class="sidebar-section">
     <h3 class="sidebar-title">Advanced</h3>
     <ul class="sidebar-nav">
+        <li><a href="/rue/docs/error-handling.html">Error Handling</a></li>
+        <li><a href="/rue/docs/environment.html">Environment</a></li>
         <li><a href="/rue/docs/compression.html">Compression</a></li>
         <li><a href="/rue/docs/testing.html">Testing</a></li>
         <li><a href="/rue/docs/api-reference.html">API Reference</a></li>
