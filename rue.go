@@ -16,7 +16,7 @@ type HandlerFunc func(*Context)
 // HandlersChain is a slice of HandlerFunc
 type HandlersChain []HandlerFunc
 
-// Last returns the last handler in the chain
+// Last returns the final handler in the chain, or nil if empty
 func (c HandlersChain) Last() HandlerFunc {
 	if length := len(c); length > 0 {
 		return c[length-1]
@@ -24,7 +24,7 @@ func (c HandlersChain) Last() HandlerFunc {
 	return nil
 }
 
-// H is a shortcut for map[string]any, commonly used for JSON responses
+// H is a convenience alias for map[string]any, used for structured responses
 type H map[string]any
 
 // Engine is the core framework engine
@@ -86,7 +86,7 @@ func New() *Engine {
 	}
 	engine.RouterGroup.engine = engine
 	engine.pool.New = func() any {
-		return engine.allocateContext()
+		return engine.newContext()
 	}
 	// Set default components
 	engine.Binder = &DefaultBinder{}
@@ -103,8 +103,8 @@ func Default() *Engine {
 	return engine
 }
 
-// allocateContext creates a new Context
-func (e *Engine) allocateContext() *Context {
+// newContext creates a new Context bound to this engine
+func (e *Engine) newContext() *Context {
 	return &Context{engine: e}
 }
 
