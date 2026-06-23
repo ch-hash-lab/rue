@@ -118,19 +118,22 @@ func (c *Context) QueryArray(key string) []string {
 
 // QueryMap returns a map for a given query key
 func (c *Context) QueryMap(key string) map[string]string {
-	return c.queryMap(c.Request.URL.Query(), key)
+	return c.parseMapQuery(c.Request.URL.Query(), key)
 }
 
-func (c *Context) queryMap(values url.Values, key string) map[string]string {
-	dicts := make(map[string]string)
+func (c *Context) parseMapQuery(values url.Values, key string) map[string]string {
+	result := make(map[string]string)
+	prefix := key + "["
 	for k, v := range values {
-		if i := strings.IndexByte(k, '['); i >= 1 && k[0:i] == key {
-			if j := strings.IndexByte(k[i+1:], ']'); j >= 1 {
-				dicts[k[i+1:][:j]] = v[0]
-			}
+		after, found := strings.CutPrefix(k, prefix)
+		if !found || len(v) == 0 {
+			continue
+		}
+		if name, ok := strings.CutSuffix(after, "]"); ok && name != "" {
+			result[name] = v[0]
 		}
 	}
-	return dicts
+	return result
 }
 
 // PostForm returns the form data value
@@ -189,7 +192,7 @@ func (c *Context) Header(key string) string {
 
 // ContentType returns the Content-Type header
 func (c *Context) ContentType() string {
-	return filterFlags(c.Header("Content-Type"))
+	return stripMediaParams(c.Header("Content-Type"))
 }
 
 // ClientIP returns the client IP address
@@ -396,7 +399,7 @@ func (c *Context) Get(key string) (any, bool) {
 func (c *Context) MustGet(key string) any {
 	value, exists := c.Get(key)
 	if !exists {
-		panic("Key \"" + key + "\" does not exist")
+		panic("rue: no value stored for key \"" + key + "\"")
 	}
 	return value
 }
@@ -477,11 +480,9 @@ func (c *Context) Context() context.Context {
 
 // ============== Helpers ==============
 
-func filterFlags(content string) string {
-	for i, char := range content {
-		if char == ' ' || char == ';' {
-			return content[:i]
-		}
+func stripMediaParams(content string) string {
+	if i := strings.IndexAny(content, " ;"); i >= 0 {
+		return content[:i]
 	}
 	return content
 }
