@@ -320,9 +320,8 @@ func (l *Logger) writeText(level LogLevel, entry *LogEntry) {
 	}
 
 	// Timestamp
-	buf.WriteString("[RUE] ")
 	t, _ := time.Parse(l.timeFormat, entry.Timestamp)
-	buf.WriteString(t.Local().Format("2006/01/02 - 15:04:05"))
+	buf.WriteString(t.Local().Format("2006/01/02 15:04:05"))
 
 	// Level
 	buf.WriteString(" | ")
