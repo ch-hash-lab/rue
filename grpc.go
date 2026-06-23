@@ -184,7 +184,7 @@ func (gc *GRPCContext) Get(key string) (any, bool) {
 func (gc *GRPCContext) MustGet(key string) any {
 	value, exists := gc.Get(key)
 	if !exists {
-		panic("Key \"" + key + "\" does not exist")
+		panic("rue: no value stored for key \"" + key + "\"")
 	}
 	return value
 }

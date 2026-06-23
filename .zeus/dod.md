@@ -19,3 +19,12 @@ Bootstrap DoD (G4 baseline). Every item must exit 0. Refine thresholds via `zeus
 `go test ./...` 与 `go test -race ./...` 按「零新增失败」执行，已登记存量：F-002（TestContext_ClientIP）、F-003（TestCompression_Property_ContentNegotiation）、F-004（TestWebSocket_FrameEncoding，仅 -race）。验收命令：
 `go test -skip 'TestContext_ClientIP|TestCompression_Property_ContentNegotiation' ./...`
 `go test -race -skip 'TestContext_ClientIP|TestCompression_Property_ContentNegotiation|TestWebSocket_FrameEncoding' ./...`
+
+## F-005 delta (全仓库合规清理)
+
+- [ ] gin 标识符清零（全仓库）：`! grep -rn 'abortIndex\|combineHandlers\|joinPaths\|lastChar\|calculateAbsolutePath\|filterFlags\|allocateContext' *.go`
+- [ ] gin 模式级指纹清零：`! grep -n 'math.MaxInt8' *.go`
+- [ ] gin 逐字文案清零：`! grep -rn 'Key.*does not exist\|GIN' *.go`
+- [ ] NOTICE 文件存在：`test -f NOTICE`
+- [ ] retract 声明存在：`grep -q 'retract' go.mod`
+- [ ] README 无 radix 引用：`! grep -in 'radix' README.md`
