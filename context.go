@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"math"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -17,8 +16,6 @@ import (
 	"github.com/bytedance/sonic"
 )
 
-const abortIndex int8 = math.MaxInt8 >> 1
-
 // Context is the request context that carries request-scoped data
 type Context struct {
 	Request *http.Request
@@ -26,7 +23,8 @@ type Context struct {
 
 	Params   Params
 	handlers HandlersChain
-	index    int8
+	cursor   int
+	aborted  bool
 	fullPath string
 
 	mu    sync.RWMutex
@@ -44,7 +42,8 @@ func (c *Context) reset(w http.ResponseWriter, r *http.Request) {
 	c.Request = r
 	c.Params = c.Params[:0]
 	c.handlers = nil
-	c.index = -1
+	c.cursor = -1
+	c.aborted = false
 	c.fullPath = ""
 	c.store = nil
 	c.Errors = c.Errors[:0]
@@ -54,16 +53,19 @@ func (c *Context) reset(w http.ResponseWriter, r *http.Request) {
 
 // Next executes the pending handlers in the chain
 func (c *Context) Next() {
-	c.index++
-	for c.index < int8(len(c.handlers)) {
-		c.handlers[c.index](c)
-		c.index++
+	c.cursor++
+	for c.cursor < len(c.handlers) {
+		if c.aborted {
+			return
+		}
+		c.handlers[c.cursor](c)
+		c.cursor++
 	}
 }
 
 // Abort prevents pending handlers from being called
 func (c *Context) Abort() {
-	c.index = abortIndex
+	c.aborted = true
 }
 
 // AbortWithStatus aborts with the specified status code
@@ -81,7 +83,7 @@ func (c *Context) AbortWithJSON(code int, obj any) {
 
 // IsAborted returns true if the context was aborted
 func (c *Context) IsAborted() bool {
-	return c.index >= abortIndex
+	return c.aborted
 }
 
 // ============== Request Data ==============
