@@ -282,7 +282,7 @@ func TestContext_Next(t *testing.T) {
 		func(c *Context) { order = append(order, 2); c.Next() },
 		func(c *Context) { order = append(order, 3) },
 	}
-	c.index = -1
+	c.cursor = -1
 
 	c.Next()
 
@@ -304,7 +304,7 @@ func TestContext_NextAbort(t *testing.T) {
 		func(c *Context) { order = append(order, 2); c.Abort() },
 		func(c *Context) { order = append(order, 3) }, // Should not execute
 	}
-	c.index = -1
+	c.cursor = -1
 
 	c.Next()
 
