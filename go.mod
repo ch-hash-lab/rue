@@ -24,3 +24,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+retract [v0.0.1, v0.0.6] // Contains unattributed derived code; use v0.0.7+
