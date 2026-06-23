@@ -4,7 +4,7 @@ A high-performance, feature-rich web framework for Go with minimal dependencies.
 
 ## Features
 
-- **High-Performance Router**: Radix tree-based routing with ~8ns static route matching
+- **High-Performance Router**: Segment-trie routing with ~6.5ns static route matching
 - **Middleware Support**: Logger, Recovery, CORS, Rate Limiter, JWT, API Key
 - **Compression**: Gzip and Brotli with automatic content negotiation
 - **Data Binding**: JSON, XML, Form, Query, Header binding with validation
@@ -633,6 +633,14 @@ BenchmarkBrotli-8                       60792   19511 ns/op   30360 B/op   15 al
 - [github.com/andybalholm/brotli](https://github.com/andybalholm/brotli) - Brotli compression
 - [github.com/quic-go/quic-go](https://github.com/quic-go/quic-go) - QUIC/HTTP3 support
 - [google.golang.org/grpc](https://google.golang.org/grpc) - gRPC support
+
+## Originality
+
+All code in this repository (v0.0.7+) is original work. The routing engine
+uses a segment-trie design with run-compressed literal chains, iterative
+backtracking, and method-switch dispatch — an independent architecture
+developed from first principles. Historical versions (v0.0.1–v0.0.6) contained
+code derived from gin and httprouter; see NOTICE for attribution.
 
 ## License
 
